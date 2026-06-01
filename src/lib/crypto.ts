@@ -19,16 +19,17 @@ export async function generateSymmetricKey(): Promise<CryptoKey> {
 }
 
 // Export the key to raw bytes so it can be stored on-chain (encrypted to nominee in Phase 1)
-export async function exportKeyToRaw(key: CryptoKey): Promise<Uint8Array> {
+export async function exportKeyToRaw(key: CryptoKey): Promise<Uint8Array<ArrayBuffer>> {
   const exported = await window.crypto.subtle.exportKey("raw", key);
-  return new Uint8Array(exported);
+  return new Uint8Array(exported as ArrayBuffer);
 }
 
-// Import raw bytes back into a CryptoKey for decryption
-export async function importRawKey(rawKey: Uint8Array): Promise<CryptoKey> {
+// Import raw bytes back into a CryptoKey for decryption.
+// Accepts Uint8Array<ArrayBuffer> — use exportKeyToRaw to produce one.
+export async function importRawKey(rawKey: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
   return await window.crypto.subtle.importKey(
     "raw",
-    rawKey.buffer,
+    rawKey,
     { name: "AES-GCM" },
     true,
     ["encrypt", "decrypt"],
@@ -58,7 +59,7 @@ export async function encryptFileBuffer(
   combined.set(iv, 0);
   combined.set(new Uint8Array(encryptedBuffer), iv.length);
 
-  return combined.buffer;
+  return combined.buffer as ArrayBuffer;
 }
 
 /**
@@ -70,13 +71,13 @@ export async function decryptFileBuffer(
   key: CryptoKey,
 ): Promise<ArrayBuffer> {
   const combined = new Uint8Array(combinedBuffer);
-  const iv = combined.slice(0, 12);
-  const encryptedData = combined.slice(12);
+  const iv = new Uint8Array(combined.buffer as ArrayBuffer, 0, 12);
+  const encryptedData = new Uint8Array(combined.buffer as ArrayBuffer, 12);
 
   return await window.crypto.subtle.decrypt(
     { name: "AES-GCM", iv },
     key,
-    encryptedData.buffer,
+    encryptedData,
   );
 }
 
