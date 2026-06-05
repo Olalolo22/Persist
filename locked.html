@@ -1,0 +1,93 @@
+<USER_REQUEST>
+claim state. lockeed : <!DOCTYPE html>
+<html>
+<head>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#0F0E0C;--surface:#1C1A16;--border:#2E2B25;--ivory:#F0EDE6;
+--aged:#8C8578;--seal:#C4472A;--gold:#B8974A;--moss:#4A6741;
+--serif:'Cormorant Garamond',serif;--sans:'DM Sans',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+body{background:var(--bg);color:var(--ivory);font-family:var(--sans);min-height:100vh;display:flex;flex-direction:column}
+
+/* NAV */
+.claim-nav{padding:20px 40px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.claim-logo{font-family:var(--serif);font-size:18px;font-weight:300;color:var(--aged);letter-spacing:0.04em}
+.claim-nav-note{font-family:var(--mono);font-size:11px;color:rgba(140,133,120,0.35)}
+
+/* TABS */
+.tabs{display:flex;gap:6px;justify-content:center;padding:14px 40px;border-bottom:1px solid var(--border);flex-wrap:wrap;background:rgba(28,26,22,0.4)}
+.tab{background:transparent;border:1px solid var(--border);color:var(--aged);padding:6px 14px;font-size:11px;font-family:var(--mono);cursor:pointer;border-radius:4px;transition:all 0.15s;letter-spacing:0.04em}
+.tab:hover{color:var(--ivory)}
+.tab.active{border-color:rgba(196,71,42,0.5);color:var(--ivory);background:rgba(196,71,42,0.07)}
+
+/* SCREENS */
+.screen{display:none;flex:1;flex-direction:column;align-items:center;justify-content:center;padding:60px 24px;text-align:center;min-height:0}
+.screen.active{display:flex}
+
+/* ── SHARED CAPSULE OBJECTS ── */
+.cap-locked{position:relative;width:110px;height:55px;margin:0 auto 52px}
+.cap-locked .body{width:110px;height:55px;background:var(--surface);border-radius:28px;border:1px solid var(--border)}
+.cap-locked .seam{po
+<truncated 11912 bytes>
+lass="epitaph-label">His final words</div>
+<p class="epitaph-text">"To whoever opens this —<br>I hope it took a long time."</p>
+</div>
+
+<div class="item-list">
+<div class="item">
+<div class="item-icon">🔑</div>
+<div>
+<div class="item-label">Seed phrase</div>
+<div class="item-sub">24 words · decrypted via Seal</div>
+</div>
+<div class="item-arrow">›</div>
+</div>
+<div class="item">
+<div class="item-icon">📄</div>
+<div>
+<div class="item-label">Legal document</div>
+<div class="item-sub">Will_Final_2025.pdf · 2.1 MB</div>
+</div>
+<div class="item-arrow">›</div>
+</div>
+</div>
+
+<div class="reveal-footer">
+Access validated by Sui smart contract<br>
+Decryption executed by Seal · threshold key protocol<br>
+Payload retrieved from Walrus · decentralised storage<br>
+No third party had access at any point in this process.
+</div>
+</div>
+</div>
+
+<script>
+function show(id, el){
+document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+document.getElementById('s-' + id).classList.add('active');
+if(el) el.classList.add('active');
+}
+</script>
+</body>
+</html>
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-05T12:05:15+01:00.
+
+The user's current state is as follows:
+Active Document: c:\Users\Suleiman Muhammed O\projects\Persist\_roadmap_internal.md (LANGUAGE_MARKDOWN)
+Cursor is on line: 174
+Other open documents:
+- c:\Users\Suleiman Muhammed O\projects\Persist\README.md (LANGUAGE_MARKDOWN)
+- c:\Users\Suleiman Muhammed O\projects\persist\src\lib\crypto.ts (LANGUAGE_TYPESCRIPT)
+- c:\Users\Suleiman Muhammed O\projects\persist\src\lib\walrus.ts (LANGUAGE_TYPESCRIPT)
+- c:\Users\Suleiman Muhammed O\projects\persist\.env.example (LANGUAGE_UNSPECIFIED)
+- c:\Users\Suleiman Muhammed O\projects\persist\src\app\providers.tsx (LANGUAGE_TSX)
+Running terminal commands:
+- npm run dev (in c:\Users\Suleiman Muhammed O\projects\Persist, running for 46m40s)
+</ADDITIONAL_METADATA>

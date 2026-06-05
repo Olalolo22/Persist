@@ -1,155 +1,213 @@
-module persist::capsule {
-    use sui::object::{Self, UID};
-    use sui::transfer;
-    use sui::tx_context::{Self, TxContext};
-    use sui::event;
-    use sui::clock::{Self, Clock};
-    use std::string::String;
+/// Persist — Cryptographic Access Control for Encrypted Digital Assets
+///
+/// This module defines `PersistCapsule`, a shared object that acts as the
+/// access policy for Sui Seal's threshold decryption service. The capsule
+/// stores metadata (Walrus blob ID, nominee, release date) and exposes a
+/// `seal_approve` entry function that key servers dry-run to decide whether
+/// to release decryption keys.
+///
+/// Architecture:
+///   Sui (truth) → Seal (encryption gate) → Walrus (encrypted storage)
+///
+/// Release logic:
+///   IF caller == nominee AND time >= release_time AND status == LOCKED
+///   THEN allow decryption
+///
+/// The encrypted payload (content + epitaph) lives on Walrus.
+/// Nothing sensitive is stored on-chain.
 
-    /// The Persist Capsule object. 
-    /// This holds the reference to the encrypted data on Walrus and the unlock conditions.
-    struct PersistCapsule has key, store {
+module persist::capsule {
+    use std::vector;
+    use sui::clock::Clock;
+    use sui::event;
+    use sui::object::{Self, UID, ID};
+    use sui::transfer;
+    use sui::tx_context::TxContext;
+
+    // ────────────────────────────────────────────────────────────────
+    // Error codes
+    // ────────────────────────────────────────────────────────────────
+
+    const ENotNominee: u64 = 0;
+    const ENotActive: u64 = 1;
+    const ENotReady: u64 = 2;
+    const ENotCreator: u64 = 3;
+    const EInvalidReleaseTime: u64 = 4;
+    const EInvalidNominee: u64 = 5;
+    const EInvalidId: u64 = 6;
+    const EAlreadySealed: u64 = 7;
+
+    // ────────────────────────────────────────────────────────────────
+    // Status constants
+    // ────────────────────────────────────────────────────────────────
+
+    const STATUS_LOCKED: u8 = 0;
+    const STATUS_CLAIMED: u8 = 1;
+
+    // ────────────────────────────────────────────────────────────────
+    // Core object
+    // ────────────────────────────────────────────────────────────────
+
+    /// A sealed digital capsule. Shared object so the nominee can access it.
+    ///
+    /// Fields are intentionally minimal — all sensitive data lives in the
+    /// Seal-encrypted Walrus blob. On-chain we store only what `seal_approve`
+    /// needs to evaluate the release condition.
+    public struct PersistCapsule has key, store {
         id: UID,
-        /// The Walrus Blob ID containing the AES-GCM encrypted file/message
-        walrus_blob_id: String,
-        /// The AES key encrypted (for now, just stored, later ECIES-wrapped to nominee)
-        encrypted_aes_key: vector<u8>,
-        /// The address of the creator
+        /// Walrus blob ID of the Seal-encrypted payload
+        walrus_blob_id: vector<u8>,
+        /// Address that created this capsule
         creator: address,
-        /// The address of the nominee who can claim this capsule
+        /// Address allowed to decrypt after release
         nominee: address,
-        /// Optional: Fixed unlock timestamp in milliseconds (0 if unused)
-        unlock_time_ms: u64,
-        /// Optional: Dead man's switch - timestamp of last known activity (0 if unused)
-        last_active_timestamp_ms: u64,
-        /// Optional: Dead man's switch - how many ms of inactivity triggers unlock (0 if unused)
-        dms_timeout_ms: u64,
-        /// The final on-chain message
-        epitaph: String,
-        /// Status: 0 = active, 1 = claimed
+        /// Unix timestamp (ms) when decryption becomes allowed
+        release_time_ms: u64,
+        /// 0 = LOCKED, 1 = CLAIMED
         status: u8,
     }
 
-    /// Event emitted when a capsule is created
-    struct CapsuleCreated has copy, drop {
-        capsule_id: object::ID,
+    // ────────────────────────────────────────────────────────────────
+    // Events
+    // ────────────────────────────────────────────────────────────────
+
+    public struct CapsuleCreated has copy, drop {
+        capsule_id: ID,
         creator: address,
         nominee: address,
-        walrus_blob_id: String,
+        release_time_ms: u64,
     }
 
-    /// Creates a new Persist Capsule and shares it.
-    public entry fun create_capsule(
-        walrus_blob_id: String,
-        encrypted_aes_key: vector<u8>,
+    public struct CapsuleClaimed has copy, drop {
+        capsule_id: ID,
         nominee: address,
-        unlock_time_ms: u64,
-        dms_timeout_ms: u64,
-        epitaph: String,
+    }
+
+    // ────────────────────────────────────────────────────────────────
+    // Seal access gate
+    // ────────────────────────────────────────────────────────────────
+
+    /// Called by Seal key servers via dry-run to evaluate whether
+    /// decryption is permitted.
+    ///
+    /// Requirements (per Seal convention):
+    ///   - Must be `entry` (not `public entry`) to prevent composition
+    ///   - First parameter must be `vector<u8>` (the encryption identity)
+    ///   - Must not return values or modify state
+    ///   - Access denied = assertion failure → key servers refuse decryption
+    entry fun seal_approve(
+        id: vector<u8>,
+        capsule: &PersistCapsule,
         clock: &Clock,
-        ctx: &mut TxContext
+        ctx: &TxContext,
     ) {
-        let creator = tx_context::sender(ctx);
-        let id = object::new(ctx);
-        let capsule_id = object::uid_to_inner(&id);
-        
-        let last_active = if (dms_timeout_ms > 0) {
-            clock::timestamp_ms(clock)
-        } else {
-            0
-        };
+        // Verify the requested decryption ID matches this capsule's object ID.
+        // This is critical to prevent a claimant from using a fake/different capsule
+        // to decrypt this capsule's payload.
+        assert!(id == object::id_to_bytes(&object::uid_to_inner(&capsule.id)), EInvalidId);
+
+        // 1. Caller must be the designated nominee
+        assert!(ctx.sender() == capsule.nominee, ENotNominee);
+
+        // 2. Capsule must still be locked (prevent re-decryption after claim)
+        assert!(capsule.status == STATUS_LOCKED, ENotActive);
+
+        // 3. Release time must have passed
+        assert!(clock.timestamp_ms() >= capsule.release_time_ms, ENotReady);
+    }
+
+    // ────────────────────────────────────────────────────────────────
+    // Creator actions
+    // ────────────────────────────────────────────────────────────────
+
+    /// Create a new capsule. The encrypted payload can be uploaded before
+    /// (one-step) or after (two-step) creating the capsule.
+    ///
+    /// Validations:
+    ///   - release_time must be in the future
+    ///   - nominee cannot be the creator (you can't seal something for yourself)
+    entry fun create_capsule(
+        walrus_blob_id: vector<u8>,
+        nominee: address,
+        release_time_ms: u64,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let creator = ctx.sender();
+
+        // Release must be in the future
+        assert!(release_time_ms > clock.timestamp_ms(), EInvalidReleaseTime);
+
+        // Nominee cannot be the creator
+        assert!(nominee != creator, EInvalidNominee);
+
+        let uid = object::new(ctx);
+        let capsule_id = uid.to_inner();
 
         let capsule = PersistCapsule {
-            id,
+            id: uid,
             walrus_blob_id,
-            encrypted_aes_key,
             creator,
             nominee,
-            unlock_time_ms,
-            last_active_timestamp_ms: last_active,
-            dms_timeout_ms,
-            epitaph,
-            status: 0,
+            release_time_ms,
+            status: STATUS_LOCKED,
         };
 
         event::emit(CapsuleCreated {
             capsule_id,
             creator,
             nominee,
-            walrus_blob_id: capsule.walrus_blob_id,
+            release_time_ms,
         });
 
-        // Share the object so the nominee can claim it later
         transfer::share_object(capsule);
     }
 
-    // --- Dead Man's Switch: Check-In ---
-
-    /// Creator calls this to prove they're still alive. Resets the DMS timer.
-    public entry fun check_in(
+    /// Update the Walrus blob ID for a capsule.
+    /// Used in the two-step flow where the capsule is created first (to get its object ID),
+    /// the payload is encrypted using that object ID and uploaded to Walrus,
+    /// and then the blob ID is stored on-chain.
+    entry fun update_blob_id(
         capsule: &mut PersistCapsule,
-        clock: &Clock,
-        ctx: &mut TxContext
+        walrus_blob_id: vector<u8>,
+        ctx: &TxContext,
     ) {
-        assert!(tx_context::sender(ctx) == capsule.creator, 0); // Only creator
-        assert!(capsule.status == 0, 1); // Must be active
-        assert!(capsule.dms_timeout_ms > 0, 2); // Must have DMS enabled
-
-        capsule.last_active_timestamp_ms = clock::timestamp_ms(clock);
+        assert!(ctx.sender() == capsule.creator, ENotCreator);
+        // Can only set the blob ID once to prevent updates after sealing
+        assert!(vector::is_empty(&capsule.walrus_blob_id), EAlreadySealed);
+        capsule.walrus_blob_id = walrus_blob_id;
     }
 
-    // --- Claim ---
+    // ────────────────────────────────────────────────────────────────
+    // Nominee actions
+    // ────────────────────────────────────────────────────────────────
 
-    /// Event emitted when a capsule is claimed
-    struct CapsuleClaimed has copy, drop {
-        capsule_id: object::ID,
-        nominee: address,
-        epitaph: String,
-    }
-
-    /// Nominee calls this to claim the capsule.
-    /// Succeeds only if:
-    ///   - caller is the nominee
-    ///   - capsule is active (status == 0)
-    ///   - at least one unlock condition is met:
-    ///     a) Fixed date has passed (unlock_time_ms > 0 && now >= unlock_time_ms)
-    ///     b) DMS has timed out (dms_timeout_ms > 0 && now >= last_active + dms_timeout_ms)
-    public entry fun claim_capsule(
+    /// Mark the capsule as claimed. Called by the nominee after they
+    /// have successfully decrypted the Walrus payload via Seal.
+    ///
+    /// This is a courtesy on-chain record — it prevents re-decryption
+    /// and lets the creator's dashboard show "CLAIMED" status.
+    entry fun claim_capsule(
         capsule: &mut PersistCapsule,
-        clock: &Clock,
-        ctx: &mut TxContext
+        ctx: &TxContext,
     ) {
-        let caller = tx_context::sender(ctx);
-        assert!(caller == capsule.nominee, 3); // Only nominee
-        assert!(capsule.status == 0, 4); // Must be active
-
-        let now = clock::timestamp_ms(clock);
-
-        // Check if at least one unlock condition is met
-        let date_unlocked = capsule.unlock_time_ms > 0 && now >= capsule.unlock_time_ms;
-        let dms_unlocked = capsule.dms_timeout_ms > 0 
-            && now >= capsule.last_active_timestamp_ms + capsule.dms_timeout_ms;
-
-        assert!(date_unlocked || dms_unlocked, 5); // No condition met
-
-        capsule.status = 1; // Mark as claimed
+        assert!(ctx.sender() == capsule.nominee, ENotNominee);
+        assert!(capsule.status == STATUS_LOCKED, ENotActive);
+        capsule.status = STATUS_CLAIMED;
 
         event::emit(CapsuleClaimed {
-            capsule_id: object::uid_to_inner(&capsule.id),
-            nominee: caller,
-            epitaph: capsule.epitaph,
+            capsule_id: capsule.id.to_inner(),
+            nominee: ctx.sender(),
         });
     }
 
-    // --- Read-only accessors (for frontend to query capsule state) ---
+    // ────────────────────────────────────────────────────────────────
+    // Read-only accessors (for frontend queries via devInspect)
+    // ────────────────────────────────────────────────────────────────
 
     public fun get_status(capsule: &PersistCapsule): u8 { capsule.status }
     public fun get_creator(capsule: &PersistCapsule): address { capsule.creator }
     public fun get_nominee(capsule: &PersistCapsule): address { capsule.nominee }
-    public fun get_walrus_blob_id(capsule: &PersistCapsule): &String { &capsule.walrus_blob_id }
-    public fun get_encrypted_aes_key(capsule: &PersistCapsule): &vector<u8> { &capsule.encrypted_aes_key }
-    public fun get_epitaph(capsule: &PersistCapsule): &String { &capsule.epitaph }
-    public fun get_unlock_time_ms(capsule: &PersistCapsule): u64 { capsule.unlock_time_ms }
-    public fun get_last_active_ms(capsule: &PersistCapsule): u64 { capsule.last_active_timestamp_ms }
-    public fun get_dms_timeout_ms(capsule: &PersistCapsule): u64 { capsule.dms_timeout_ms }
+    public fun get_walrus_blob_id(capsule: &PersistCapsule): &vector<u8> { &capsule.walrus_blob_id }
+    public fun get_release_time_ms(capsule: &PersistCapsule): u64 { capsule.release_time_ms }
 }

@@ -5,6 +5,8 @@ import { SuiClientProvider, WalletProvider } from "@mysten/dapp-kit";
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 import "@mysten/dapp-kit/dist/index.css";
 
+import { useEffect, useState } from "react";
+
 const queryClient = new QueryClient();
 
 const network = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? "testnet") as
@@ -13,9 +15,8 @@ const network = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? "testnet") as
   | "devnet"
   | "localnet";
 
-// Use Tatum RPC for testnet if configured, fall back to public fullnode.
-const testnetUrl =
-  process.env.NEXT_PUBLIC_TATUM_RPC_URL ?? getJsonRpcFullnodeUrl("testnet");
+// Force a stable public testnet fullnode to bypass aggressive rate-limiting or Tatum CORS issues.
+const testnetUrl = "https://testnet.sui.rpcpool.com/";
 
 const networks = {
   testnet: new SuiJsonRpcClient({ url: testnetUrl, network: "testnet" }),
@@ -33,11 +34,17 @@ const networks = {
   }),
 };
 
+import { ToastProvider } from "@/components/ui/Toast";
+
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       <SuiClientProvider networks={networks} defaultNetwork={network}>
-        <WalletProvider autoConnect>{children}</WalletProvider>
+        <WalletProvider autoConnect={typeof window !== "undefined"}>
+          <ToastProvider>
+            {children}
+          </ToastProvider>
+        </WalletProvider>
       </SuiClientProvider>
     </QueryClientProvider>
   );

@@ -6,19 +6,19 @@
  */
 
 const WALRUS_PUBLISHER =
-  "https://publisher.walrus-testnet.walrus.space/v1/store?epochs=5";
-const WALRUS_AGGREGATOR = "https://aggregator.walrus-testnet.walrus.space/v1";
+  "https://publisher.walrus-testnet.walrus.space/v1/blobs?epochs=5";
+const WALRUS_AGGREGATOR = "https://aggregator.walrus-testnet.walrus.space/v1/blobs";
 
 /**
  * Uploads an encrypted ArrayBuffer to Walrus.
  * Returns the Blob ID which gets stored on-chain in the PersistCapsule.
  */
 export async function uploadToWalrus(
-  encryptedBuffer: ArrayBuffer,
+  encryptedBuffer: ArrayBuffer | Uint8Array,
 ): Promise<string> {
   const response = await fetch(WALRUS_PUBLISHER, {
     method: "PUT",
-    body: encryptedBuffer,
+    body: encryptedBuffer as any,
   });
 
   if (!response.ok) {
@@ -41,7 +41,7 @@ export async function uploadToWalrus(
  * Fetches an encrypted blob from Walrus using its Blob ID.
  */
 export async function fetchFromWalrus(blobId: string): Promise<ArrayBuffer> {
-  const response = await fetch(`${WALRUS_AGGREGATOR}/${blobId}`);
+  const response = await fetch(`/api/walrus/${blobId}`);
 
   if (!response.ok) {
     throw new Error(`Walrus fetch failed: ${response.statusText}`);

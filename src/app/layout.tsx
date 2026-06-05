@@ -3,9 +3,9 @@ import { Providers } from "./providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Persist — Trustless Crypto Inheritance on Sui",
+  title: "Persist — Digital Heirloom Capsule",
   description:
-    "Encrypt a message, document, or crypto instruction. Set a date or a dead man's switch. It unlocks automatically on Walrus — forever.",
+    "Encrypt a message, document, or crypto instruction. It unlocks automatically when the time is right.",
 };
 
 export default function RootLayout({
@@ -15,6 +15,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=DM+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body>
         <Providers>{children}</Providers>
       </body>
