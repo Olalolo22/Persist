@@ -148,6 +148,7 @@ export async function fetchAllCapsules(
     const eventsResult: any = await suiClient.queryEvents({
       query: { MoveEventType: eventType },
       limit: 100,
+      order: "descending",
     });
 
     if (!eventsResult.data || eventsResult.data.length === 0) {
