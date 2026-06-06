@@ -194,17 +194,19 @@ export default function ClaimCapsuleDetails() {
       }, 700);
 
       try {
-        const claimTx = new Transaction();
-        claimTx.moveCall({
-          target: `${process.env.NEXT_PUBLIC_PERSIST_PACKAGE_ID}::capsule::claim_capsule`,
-          arguments: [claimTx.object(capsule.objectId)],
-        });
+        if (capsule.status !== 1) {
+          const claimTx = new Transaction();
+          claimTx.moveCall({
+            target: `${process.env.NEXT_PUBLIC_PERSIST_PACKAGE_ID}::capsule::claim_capsule`,
+            arguments: [claimTx.object(capsule.objectId)],
+          });
 
-        await signAndExecuteTransaction({
-          transaction: claimTx,
-        });
+          await signAndExecuteTransaction({
+            transaction: claimTx,
+          });
 
-        setCapsule((prev: any) => ({ ...prev, status: 1 }));
+          setCapsule((prev: any) => ({ ...prev, status: 1 }));
+        }
       } catch (claimErr) {
         console.warn("Failed to mark capsule claimed on Sui network:", claimErr);
       }
