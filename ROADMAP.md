@@ -62,7 +62,7 @@ The inheritance capsule is the foundation. The protocol is broader:
 
 All use cases run on the same contract. The interface adapts to the context.
 
-Agent-native data layer — As AI agents become primary consumers of on-chain data, Persist's Walrus + Tatum architecture positions the protocol as infrastructure for agent-readable encrypted state. Trustless key handoff, time-locked disclosure, and conditional access are primitives agents need. This is the long-term expansion surface that Persist will be exploring and building around.S
+Agent-native data layer — As AI agents become primary consumers of on-chain data, Persist's Walrus + Tatum architecture positions the protocol as infrastructure for agent-readable encrypted state. Trustless key handoff, time-locked disclosure, and conditional access are primitives agents need. This is the long-term expansion surface that Persist will be exploring and building around.
 
 **Programmable access conditions** — Extending the Move contract to support richer unlock logic: multi-party approval, on-chain event triggers, and composable condition chains.
 
