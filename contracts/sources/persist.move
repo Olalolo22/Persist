@@ -109,9 +109,6 @@ module persist::capsule {
         // 1. Caller must be the designated nominee
         assert!(ctx.sender() == capsule.nominee, ENotNominee);
 
-        // 2. Capsule must still be locked (prevent re-decryption after claim)
-        assert!(capsule.status == STATUS_LOCKED, ENotActive);
-
         // 3. Release time must have passed
         assert!(clock.timestamp_ms() >= capsule.release_time_ms, ENotReady);
     }
