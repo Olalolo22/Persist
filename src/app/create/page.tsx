@@ -163,7 +163,7 @@ export default function CreateCapsule() {
 
       setLoadingStatus("Awaiting transaction indexing...");
 
-      const txData = (await suiClient.getTransactionBlock({
+      const txData = (await suiClient.waitForTransaction({
         digest: createResult.digest,
         options: { showObjectChanges: true },
       })) as any;
