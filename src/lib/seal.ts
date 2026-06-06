@@ -9,7 +9,7 @@ const PACKAGE_ID = process.env.NEXT_PUBLIC_PERSIST_PACKAGE_ID!;
 const MAINNET_KEY_SERVERS = [
   {
     objectId: "0x1afb3a57211ceff8f6781757821847e3ddae73f64e78ec8cd9349914ad985475",
-    url: "https://open-seal-mainnet.nodeinfra.com",
+    url: typeof window !== "undefined" ? "/api/seal" : "https://open-seal-mainnet.nodeinfra.com",
     weight: 1,
   },
 ];
