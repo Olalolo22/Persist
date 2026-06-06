@@ -79,7 +79,6 @@ export async function decryptCapsule(
  */
 export function buildSealApproveTx(
   capsuleObjectId: string,
-  senderAddress: string
 ): Transaction {
   const tx = new Transaction();
   const cleanPackageId = PACKAGE_ID.startsWith("0x") ? PACKAGE_ID : `0x${PACKAGE_ID}`;
@@ -97,8 +96,6 @@ export function buildSealApproveTx(
       tx.object("0x6"), // Clock object
     ],
   });
-
-  tx.setSender(senderAddress);
 
   return tx;
 }

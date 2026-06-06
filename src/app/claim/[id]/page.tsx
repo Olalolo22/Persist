@@ -171,9 +171,10 @@ export default function ClaimCapsuleDetails() {
       setDecryptStep("payload");
       await new Promise((resolve) => setTimeout(resolve, 800));
 
-      const approveTx = buildSealApproveTx(capsule.objectId, currentAccount.address);
+      const approveTx = buildSealApproveTx(capsule.objectId);
       const rawTxBytes = await approveTx.build({
         client: suiClient,
+        onlyTransactionKind: true,
       });
 
       const encryptedBytes = Buffer.from(encryptedPayloadB64, "base64");
