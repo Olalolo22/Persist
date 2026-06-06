@@ -65,7 +65,7 @@ export function Sidebar({ currentAddress, resolvedName, onDisconnect }: { curren
       </div>
       
       <div style={{ padding: '0 24px', fontSize: '10px', color: 'rgba(140,133,120,0.3)', fontFamily: 'var(--mono)', lineHeight: 1.6 }}>
-        Connected to Sui testnet<br/>Walrus integration active
+        Connected to {process.env.NEXT_PUBLIC_SUI_NETWORK === "mainnet" ? "Sui mainnet" : "Sui testnet"}<br/>Walrus integration active
       </div>
     </div>
   );

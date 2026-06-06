@@ -106,7 +106,7 @@ export async function reconstructDigitalFootprint(
         transactionCount: 0,
         hasMore: false,
         reconstructionStatus: "EMPTY",
-        networksChecked: ["Sui Testnet"],
+        networksChecked: [process.env.NEXT_PUBLIC_SUI_NETWORK === "mainnet" ? "Sui Mainnet" : "Sui Testnet"],
         lifecycleOverview: "No transaction footprint found on-chain.",
       };
     }
@@ -125,7 +125,7 @@ export async function reconstructDigitalFootprint(
       transactionCount: count,
       hasMore: hasNextPage,
       reconstructionStatus: hasNextPage ? "PARTIAL" : "COMPLETE",
-      networksChecked: ["Sui Testnet"],
+      networksChecked: [process.env.NEXT_PUBLIC_SUI_NETWORK === "mainnet" ? "Sui Mainnet" : "Sui Testnet"],
       lifecycleOverview: overview,
     };
   } catch (err) {
@@ -136,7 +136,7 @@ export async function reconstructDigitalFootprint(
       transactionCount: 0,
       hasMore: false,
       reconstructionStatus: "ERROR",
-      networksChecked: ["Sui Testnet"],
+      networksChecked: [process.env.NEXT_PUBLIC_SUI_NETWORK === "mainnet" ? "Sui Mainnet" : "Sui Testnet"],
       lifecycleOverview: "Footprint reconstruction service offline.",
     };
   }

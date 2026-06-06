@@ -57,3 +57,9 @@ contracts/.move/
 *.key
 *.keystore
 sui.keystore
+
+# Sui CLI Binaries and Logs
+*.exe
+resolve.json
+publish_output.json
+contracts/publish_output.json

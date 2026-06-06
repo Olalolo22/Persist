@@ -135,7 +135,7 @@ export default function ClaimLanding() {
             </div>
           ) : loadingList ? (
             <div style={{ padding: '24px', fontSize: '12px', color: 'rgba(140,133,120,0.6)', fontFamily: 'var(--mono)' }}>
-              Scanning Sui Testnet...
+              Scanning {process.env.NEXT_PUBLIC_SUI_NETWORK === "mainnet" ? "Sui Mainnet" : "Sui Testnet"}...
             </div>
           ) : nominatedCapsules.length === 0 ? (
             <div style={{ padding: '24px', background: 'rgba(28,26,22,0.5)', border: '1px solid rgba(46,43,37,0.5)', borderRadius: '12px', fontSize: '12px', color: 'rgba(140,133,120,0.6)' }}>

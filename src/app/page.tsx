@@ -362,7 +362,7 @@ export default function VaultDashboard() {
                   </div>
                   <div>
                     <div className="sc-stat-label">Network</div>
-                    <div className="sc-stat-val">Sui Testnet</div>
+                    <div className="sc-stat-val">{process.env.NEXT_PUBLIC_SUI_NETWORK === "mainnet" ? "Sui Mainnet" : "Sui Testnet"}</div>
                   </div>
                 </div>
 
