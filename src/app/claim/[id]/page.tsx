@@ -11,6 +11,7 @@ import {
 } from "@mysten/dapp-kit";
 import { fetchCapsuleById, decryptCapsule, createSealClient, createSessionKeyForWallet } from "@/lib/seal";
 import { fetchFromWalrus } from "@/lib/walrus";
+import { reconstructDigitalFootprint, DigitalLegacyProfile } from "@/lib/tatum";
 import { Transaction } from "@mysten/sui/transactions";
 import { buildSealApproveTx } from "@/lib/seal";
 import { useToast } from "@/components/ui/Toast";
@@ -45,6 +46,7 @@ export default function ClaimCapsuleDetails() {
   const [expandedPayload, setExpandedPayload] = useState(true);
 
   const [suiNames, setSuiNames] = useState<Record<string, string>>({});
+  const [legacyProfile, setLegacyProfile] = useState<DigitalLegacyProfile | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -70,6 +72,13 @@ export default function ClaimCapsuleDetails() {
           }
         } catch (nsErr) {
           console.warn("Failed to resolve creator name service:", nsErr);
+        }
+
+        try {
+          const profile = await reconstructDigitalFootprint(cap.creator);
+          setLegacyProfile(profile);
+        } catch (tatumErr) {
+          console.warn("Failed to fetch legacy profile for creator:", tatumErr);
         }
 
         try {
@@ -386,6 +395,27 @@ export default function ClaimCapsuleDetails() {
                       <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(46,43,37,0.5)', textAlign: 'right' }}>
                         <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(decryptedMessage); toast("Payload copied", "success"); }} style={{ background: 'transparent', color: 'var(--gold)', border: '1px solid rgba(184,151,74,0.4)', padding: '6px 12px', fontSize: '10px', fontFamily: 'var(--mono)', borderRadius: '4px', cursor: 'pointer' }}>COPY PAYLOAD</button>
                       </div>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ marginTop: '24px', padding: '16px', background: 'rgba(28,26,22,0.5)', border: '1px solid rgba(46,43,37,0.5)', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '13px', color: 'var(--ivory)', marginBottom: '4px', fontFamily: 'var(--serif)' }}>About the Creator</div>
+                  <div style={{ fontSize: '10px', color: 'var(--aged)', marginBottom: '16px', fontFamily: 'var(--mono)' }}>Historical context captured when this capsule was sealed.</div>
+                  
+                  {legacyProfile ? (
+                    <ul style={{ listStyle: 'none', padding: 0, margin: 0, fontSize: '12px', color: 'var(--aged)', lineHeight: '1.8' }}>
+                      <li><strong style={{ color: 'var(--ivory)', fontWeight: 'normal' }}>Active on-chain since:</strong> {legacyProfile.transactionCount > 0 ? "Available" : "Not yet available"}</li>
+                      <li><strong style={{ color: 'var(--ivory)', fontWeight: 'normal' }}>Transactions recorded:</strong> {legacyProfile.transactionCount}</li>
+                      <li><strong style={{ color: 'var(--ivory)', fontWeight: 'normal' }}>Last activity before sealing:</strong> {legacyProfile.lastActiveMs ? `${Math.round((Date.now() - legacyProfile.lastActiveMs) / (1000 * 60 * 60 * 24))} days ago` : "None"}</li>
+                    </ul>
+                  ) : (
+                    <div style={{ fontSize: '12px', color: 'var(--aged)' }}>Legacy context was not captured for this capsule.</div>
+                  )}
+                  
+                  {legacyProfile && (
+                    <div style={{ fontSize: '10px', color: 'rgba(140, 133, 120, 0.4)', marginTop: '16px', lineHeight: '1.4' }}>
+                      This information was reconstructed from public blockchain records at the time of sealing. It does not affect your access to the capsule.
                     </div>
                   )}
                 </div>

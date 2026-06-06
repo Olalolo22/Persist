@@ -10,9 +10,11 @@ import {
 } from "@mysten/dapp-kit";
 import { encryptForCapsule, createSealClient } from "@/lib/seal";
 import { uploadToWalrus } from "@/lib/walrus";
+import { reconstructDigitalFootprint, DigitalLegacyProfile } from "@/lib/tatum";
 import { Transaction } from "@mysten/sui/transactions";
 import Link from "next/link";
 import { useToast } from "@/components/ui/Toast";
+import { useEffect } from "react";
 
 export const dynamic = "force-dynamic";
 
@@ -51,13 +53,26 @@ export default function CreateCapsule() {
   const [releaseDate, setReleaseDate] = useState("");
   const [releaseTime, setReleaseTime] = useState("");
 
+  const [legacyProfile, setLegacyProfile] = useState<DigitalLegacyProfile | null>(null);
+  const [fetchingProfile, setFetchingProfile] = useState(false);
+
+  useEffect(() => {
+    if (currentAccount) {
+      setFetchingProfile(true);
+      reconstructDigitalFootprint(currentAccount.address).then(profile => {
+        setLegacyProfile(profile);
+        setFetchingProfile(false);
+      });
+    }
+  }, [currentAccount]);
+
   const [selectedTypes, setSelectedTypes] = useState<string[]>(["Seed phrase"]);
 
   const contentTypesList = [
     { label: "Seed phrase", icon: "🔑", sub: "12 or 24 word recovery phrase" },
     { label: "Private key", icon: "🗝️", sub: "Raw or WIF format" },
     { label: "Document", icon: "📄", sub: "PDF, image, or text file" },
-    { label: "Personal letter", icon: "✉️", sub: "A message for your nominee" },
+    { label: "Personal letter", icon: "✉️", sub: "A message for your intended recipient" },
     { label: "Passwords", icon: "🔐", sub: "Account credentials or notes" },
     { label: "The Epitaph", icon: "📝", sub: "Your final on-chain message" }
   ];
@@ -270,7 +285,7 @@ export default function CreateCapsule() {
         <div className="seal-steps">
           <div className={`ss ${sealingStep !== "idle" ? 'active' : ''}`}>
             <div className="ss-icon">✓</div>
-            <div className="ss-text">Content encrypted locally · AES-256-GCM</div>
+            <div className="ss-text">Content encrypted locally using Sui Seal</div>
           </div>
           <div className={`ss ${sealingStep === "uploading" || sealingStep === "deploying" || sealingStep === "finalizing" ? 'active' : 'pending'}`}>
             <div className="ss-icon">{sealingStep === "uploading" || sealingStep === "deploying" || sealingStep === "finalizing" ? "✓" : "·"}</div>
@@ -326,7 +341,7 @@ export default function CreateCapsule() {
           <div className={`step ${step === 1 ? 'active' : ''}`}>
             <div className="step-eyebrow">Step 1 of 5</div>
             <div className="step-title">What do you want to call this capsule?</div>
-            <div className="step-sub">Give it a name you'll recognize. Your nominee will see this when the capsule unlocks.</div>
+            <div className="step-sub">Give it a name you'll recognize. Your intended recipient will see this when the capsule unlocks.</div>
 
             <div className="field">
               <label>Capsule Name</label>
@@ -336,7 +351,7 @@ export default function CreateCapsule() {
             <div className="field">
               <label>Description (optional)</label>
               <textarea placeholder="A short note about what this capsule contains — for your reference only." rows={3} value={description} onChange={e => setDescription(e.target.value)}></textarea>
-              <div className="hint">Private metadata. Never shown to the nominee before opening.</div>
+              <div className="hint">Private metadata. Never shown to the intended recipient before opening.</div>
             </div>
 
             <div className="step-nav">
@@ -352,7 +367,7 @@ export default function CreateCapsule() {
 
             <div className="encrypt-bar">
               <div className="encrypt-dot"></div>
-              <p>AES-256-GCM encryption · keys generated locally · payload sealed before upload to Walrus</p>
+              <p>Sui Seal encryption · keys generated locally · payload sealed before upload to Walrus</p>
             </div>
 
             <div className="content-types">
@@ -370,7 +385,7 @@ export default function CreateCapsule() {
             <div className="field">
               <label>Add content</label>
               <textarea placeholder="Paste your seed phrase, private key, or write your message here…" rows={5} style={{fontFamily:'var(--mono)', fontSize:'12px'}} value={secretMessage} onChange={e => setSecretMessage(e.target.value)}></textarea>
-              <div className="hint">Encrypted locally. Decrypted only by nominee after release. Max size 10MB.</div>
+              <div className="hint">Encrypted locally. Decrypted only by intended recipient after release. Max size 10MB.</div>
             </div>
 
             <div className="step-nav">
@@ -387,7 +402,7 @@ export default function CreateCapsule() {
             <div className="trigger-grid">
               <div className={`trigger-card ${triggerType === 'inactivity' ? 'selected' : ''}`} onClick={() => setTriggerType('inactivity')}>
                 <div className="t-icon">◉</div>
-                <div className="t-label">Inactivity</div>
+                <div className="t-label">Absence Safeguard</div>
                 <div className="t-desc">Unlocks if your wallet goes quiet</div>
               </div>
               <div className={`trigger-card ${triggerType === 'date' ? 'selected' : ''}`} onClick={() => setTriggerType('date')}>
@@ -404,13 +419,13 @@ export default function CreateCapsule() {
 
             {triggerType === 'inactivity' && (
               <div className="field">
-                <label>Inactivity window</label>
+                <label>Silence window</label>
                 <div className="window-options">
                   {[30, 90, 180, 365].map(days => (
                     <div key={days} className={`window-opt ${inactivityDays === days ? 'selected' : ''}`} onClick={() => setInactivityDays(days)}>{days} days</div>
                   ))}
                 </div>
-                <div className="hint">If no transactions are detected on your connected wallet for this period, the Sui contract allows nominee claim request. Tatum indexes wallet activity but does not control security logic.</div>
+                <div className="hint">If your wallet goes silent beyond the defined window, your intended recipient can open the capsule. Tatum indexes wallet activity but does not control security logic.</div>
               </div>
             )}
 
@@ -443,7 +458,7 @@ export default function CreateCapsule() {
           <div className={`step ${step === 4 ? 'active' : ''}`}>
             <div className="step-eyebrow">Step 4 of 5</div>
             <div className="step-title">Who receives this capsule?</div>
-            <div className="step-sub">Your nominee will receive access to this capsule when the unlock conditions are met.</div>
+            <div className="step-sub">This person will receive access when your capsule's conditions are met.</div>
 
             <div className="nominee-note">
               <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
@@ -456,13 +471,13 @@ export default function CreateCapsule() {
             </div>
 
             <div className="field">
-              <label>Nominee name</label>
+              <label>Intended recipient name</label>
               <input type="text" placeholder="e.g. Amara Okafor" value={nomineeName} onChange={e => setNomineeName(e.target.value)} />
               <div className="hint">For reference and display in the claim screen greeting.</div>
             </div>
 
             <div className="field">
-              <label>Nominee (Sui Address or SuiNS name)</label>
+              <label>Intended recipient (Sui Address or SuiNS name)</label>
               <div style={{ position: 'relative' }}>
                 <input type="text" placeholder="e.g. amara.sui or 0x4f2a..." style={{ fontFamily: 'var(--mono)' }} value={nomineeInput} onChange={e => handleNomineeChange(e.target.value)} />
                 {resolvingName && <div className="mini-spinner" style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)' }}></div>}
@@ -470,8 +485,7 @@ export default function CreateCapsule() {
               
               {resolvedAddress && (
                 <div style={{ background: 'rgba(74,103,65,0.05)', border: '1px solid rgba(74,103,65,0.2)', padding: '12px', borderRadius: '6px', marginTop: '12px' }}>
-                  <div style={{ fontSize: '10px', color: 'var(--moss)', fontFamily: 'var(--mono)', marginBottom: '4px' }}>SuiNS name resolved successfully:</div>
-                  <div style={{ fontSize: '11px', color: 'var(--aged)', fontFamily: 'var(--mono)', wordBreak: 'break-all' }}>{resolvedAddress}</div>
+                  <div style={{ fontSize: '11px', color: 'var(--moss)', fontFamily: 'var(--mono)', wordBreak: 'break-all' }}>✓ {nomineeInput} resolved → {shortenAddress(resolvedAddress)}</div>
                 </div>
               )}
             </div>
@@ -494,6 +508,37 @@ export default function CreateCapsule() {
             <div className="step-sub">Once sealed, the capsule is written to Walrus and the Sui contract is deployed. This cannot be undone.</div>
 
             <div className="review-section">
+              <div className="r-label">How Your Capsule Is Protected</div>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, color: 'var(--ivory)', fontSize: '13px', lineHeight: '2' }}>
+                <li>✓ Contents encrypted locally using Sui Seal before leaving your browser</li>
+                <li>✓ Persist cannot decrypt your capsule</li>
+                <li>✓ Preserved permanently on Walrus</li>
+                <li>✓ Release conditions enforced on Sui — immutable</li>
+                <li>✓ Decryption controlled by distributed key custody</li>
+                <li>✓ Legacy context preserved through Tatum</li>
+              </ul>
+            </div>
+
+            <div className="review-section">
+              <div className="r-label">Legacy Snapshot <span style={{fontSize:'10px', color:'var(--aged)', fontWeight:'normal'}}>Source: Tatum</span></div>
+              <p style={{ fontSize: '12px', color: 'var(--aged)', marginBottom: '16px', lineHeight: '1.5' }}>
+                A snapshot of your public on-chain activity will be attached to this capsule at the moment of sealing. This context does not affect access or decryption — it becomes part of the permanent record of who created this capsule and when.
+              </p>
+              {currentAccount ? (
+                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, color: 'var(--ivory)', fontSize: '13px', lineHeight: '2' }}>
+                    <li><span style={{ color: 'var(--aged)' }}>Active on-chain since:</span> {fetchingProfile ? "Fetching..." : (legacyProfile && legacyProfile.transactionCount > 0 ? "Available" : "Not yet available")}</li>
+                    <li><span style={{ color: 'var(--aged)' }}>Transactions recorded:</span> {fetchingProfile ? "Fetching..." : (legacyProfile ? legacyProfile.transactionCount : "0")}</li>
+                    <li><span style={{ color: 'var(--aged)' }}>Last activity before sealing:</span> {fetchingProfile ? "Fetching..." : (legacyProfile && legacyProfile.lastActiveMs ? `${Math.round((Date.now() - legacyProfile.lastActiveMs) / (1000 * 60 * 60 * 24))} days ago` : "None")}</li>
+                    <li><span style={{ color: 'var(--aged)' }}>Reconstruction status:</span> {fetchingProfile ? "Fetching..." : (legacyProfile ? (legacyProfile.reconstructionStatus === 'EMPTY' ? "Pending" : "Complete") : "Pending")}</li>
+                  </ul>
+                </div>
+              ) : (
+                <div style={{ fontSize: '13px', color: 'var(--aged)' }}>On-chain history is not yet available for this wallet. The capsule can still be sealed.</div>
+              )}
+            </div>
+
+            <div className="review-section">
               <div className="r-label">Capsule</div>
               <div className="review-row"><div className="rk">Name</div><div className="rv">{capsuleName}</div></div>
               <div className="review-row"><div className="rk">Contents</div><div className="rv">{selectedTypes.join(", ")}</div></div>
@@ -509,7 +554,7 @@ export default function CreateCapsule() {
             </div>
 
             <div className="review-section" style={{ borderBottom: 'none', marginBottom: '24px' }}>
-              <div className="r-label">Nominee & Identity</div>
+              <div className="r-label">Intended Recipient & Identity</div>
               <div className="review-row"><div className="rk">Name</div><div className="rv">{nomineeName || "Untitled"}</div></div>
               {nomineeInput.endsWith(".sui") && <div className="review-row"><div className="rk">SuiNS name</div><div className="rv highlight">{nomineeInput}</div></div>}
               <div className="review-row"><div className="rk">Resolved address</div><div className="rv" style={{maxWidth:'200px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{nomineeAddress}</div></div>

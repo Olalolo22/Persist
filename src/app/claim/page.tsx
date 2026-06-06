@@ -102,7 +102,7 @@ export default function ClaimLanding() {
           Claim a Capsule
         </h1>
         <p className="h-sub" style={{ marginBottom: '40px' }}>
-          Access a sealed capsule nominated to you. Enter the Capsule ID manually below, or connect your wallet to inspect pending claims.
+          A capsule was left for you. Enter the Capsule ID below, or connect your wallet to find capsules waiting in your name.
         </p>
 
         <form onSubmit={handleManualSearch} style={{ width: '100%', maxWidth: '440px', background: 'var(--surface)', border: '1px solid var(--border)', padding: '32px', borderRadius: '16px', marginBottom: '40px', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}>
@@ -122,12 +122,12 @@ export default function ClaimLanding() {
             className="btn-sec"
             style={{ width: '100%', color: 'var(--gold)', borderColor: 'rgba(184,151,74,0.4)', opacity: !capsuleIdInput.trim() ? 0.4 : 1, pointerEvents: !capsuleIdInput.trim() ? 'none' : 'auto' }}
           >
-            Inspect Capsule
+            Open Capsule
           </button>
         </form>
 
         <div style={{ width: '100%', maxWidth: '440px' }}>
-          <div style={{ fontSize: '10px', color: 'var(--aged)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '16px', fontFamily: 'var(--mono)' }}>Capsules Waiting For You</div>
+          <div style={{ fontSize: '10px', color: 'var(--aged)', letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: '16px', fontFamily: 'var(--mono)' }}>Capsules Left For You</div>
 
           {!currentAccount ? (
             <div style={{ padding: '24px', background: 'rgba(28,26,22,0.5)', border: '1px solid rgba(46,43,37,0.5)', borderRadius: '12px', fontSize: '12px', color: 'rgba(140,133,120,0.6)', fontStyle: 'italic' }}>

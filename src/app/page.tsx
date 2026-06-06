@@ -141,12 +141,10 @@ export default function VaultDashboard() {
             Persist is a trustless digital legacy vault. Encrypt what matters. Seal it on-chain. It opens only when needed — never by accident.
           </p>
           <div className="h-ctas">
-            <ConnectButton />
             <Link href="/claim">
               <button className="btn-sec">Claim a Capsule</button>
             </Link>
           </div>
-          <p className="h-note">Sealed with care. Opened when needed.</p>
         </div>
 
         <div className="section">
@@ -171,18 +169,44 @@ export default function VaultDashboard() {
               <div className="how-card">
                 <div className="hc-num">01</div>
                 <div className="hc-title">Seal</div>
-                <div className="hc-text">Add keys, credentials, or final instructions. Everything is encrypted in your browser using Sui Seal's threshold cryptography before it ever leaves your device.</div>
+                <div className="hc-text">Add keys, credentials, or final instructions. Everything is encrypted locally using Sui Seal before it ever leaves your device. Your capsule contents are yours alone.</div>
               </div>
               <div className="how-card">
                 <div className="hc-num">02</div>
                 <div className="hc-title">Persist</div>
-                <div className="hc-text">Stored permanently as a decentralized blob on Walrus. Access permissions are locked directly inside an immutable Sui smart contract.</div>
+                <div className="hc-text">Your capsule is preserved permanently on Walrus — independently of this application. The release conditions are recorded on Sui and cannot be changed after sealing.</div>
               </div>
               <div className="how-card">
                 <div className="hc-num">03</div>
                 <div className="hc-title">Pass on</div>
-                <div className="hc-text">Provide your nominee with the Claim URL. When the time comes, they connect their wallet to request threshold decryption shares. Secure, trustless, and serverless.</div>
+                <div className="hc-text">Share a single link with your intended recipient. When the time comes, they connect their wallet and receive what you left for them. No intermediaries. No expiry.</div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="section" style={{ marginTop: '40px' }}>
+          <div className="eyebrow" style={{marginBottom:'32px'}}>Built on infrastructure that doesn't disappear.</div>
+          <div className="how-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+            <div className="how-card" style={{ padding: '24px' }}>
+              <div style={{ fontSize: '10px', color: 'var(--aged)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px', fontFamily: 'var(--mono)' }}>The Promise</div>
+              <div style={{ fontSize: '18px', color: 'var(--ivory)', marginBottom: '12px', fontFamily: 'var(--serif)' }}>Sui</div>
+              <div style={{ fontSize: '13px', color: 'var(--aged)', lineHeight: '1.6' }}>Release conditions are recorded on-chain and cannot be changed after sealing.</div>
+            </div>
+            <div className="how-card" style={{ padding: '24px' }}>
+              <div style={{ fontSize: '10px', color: 'var(--aged)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px', fontFamily: 'var(--mono)' }}>The Preservation</div>
+              <div style={{ fontSize: '18px', color: 'var(--ivory)', marginBottom: '12px', fontFamily: 'var(--serif)' }}>Walrus</div>
+              <div style={{ fontSize: '13px', color: 'var(--aged)', lineHeight: '1.6' }}>Capsule contents are stored permanently, independently of this application.</div>
+            </div>
+            <div className="how-card" style={{ padding: '24px' }}>
+              <div style={{ fontSize: '10px', color: 'var(--aged)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px', fontFamily: 'var(--mono)' }}>The Key</div>
+              <div style={{ fontSize: '18px', color: 'var(--ivory)', marginBottom: '12px', fontFamily: 'var(--serif)' }}>Seal</div>
+              <div style={{ fontSize: '13px', color: 'var(--aged)', lineHeight: '1.6' }}>The decryption key is held in distributed custody and released only when conditions are met. Not even Persist can open it early.</div>
+            </div>
+            <div className="how-card" style={{ padding: '24px' }}>
+              <div style={{ fontSize: '10px', color: 'var(--aged)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px', fontFamily: 'var(--mono)' }}>The Memory</div>
+              <div style={{ fontSize: '18px', color: 'var(--ivory)', marginBottom: '12px', fontFamily: 'var(--serif)' }}>Tatum</div>
+              <div style={{ fontSize: '13px', color: 'var(--aged)', lineHeight: '1.6' }}>Reconstructs the creator's public on-chain footprint at the moment a capsule is sealed — preserving historical context alongside the inheritance itself.</div>
             </div>
           </div>
         </div>
@@ -211,7 +235,7 @@ export default function VaultDashboard() {
               </thead>
               <tbody>
                 <tr>
-                  <td className="td-label">Liveness detection</td>
+                  <td className="td-label">On-chain activity reconstruction</td>
                   <td><span className="bad-badge">Manual monthly check-in</span></td>
                   <td><span className="good-badge">Passive wallet monitoring</span></td>
                 </tr>
@@ -355,41 +379,24 @@ export default function VaultDashboard() {
               </div>
             </div>
 
-            <div className="sec-title">Legacy context</div>
-            <div className="sec-sub">Contextual enrichment via Tatum · Read-only · Does not affect capsule state</div>
-            <div className="feed">
-              {legacyProfile && legacyProfile.transactionCount > 0 ? (
-                <>
-                  <div className="feed-item">
-                    <div className="fi-dot"></div>
-                    <div className="fi-text">
-                      Wallet shows <strong>active footprint on Sui Testnet</strong> with {legacyProfile.transactionCount} transactions <span className="fi-badge">context only</span>
-                    </div>
-                    <div className="fi-time">{legacyProfile.lastActiveMs ? `${Math.round((Date.now() - legacyProfile.lastActiveMs) / (1000 * 60 * 60))}h ago` : "recent"}</div>
-                  </div>
-                  {createdCapsules.slice(0, 3).map((cap) => (
-                    <div key={cap.objectId} className="feed-item">
-                      <div className="fi-dot"></div>
-                      <div className="fi-text">
-                        Capsule <strong>"{cap.walrusBlobId ? getDisplayName(cap.nominee) : "Untitled"}"</strong> was sealed — payload written to Walrus
-                      </div>
-                      <div className="fi-time">
-                        {Math.round((Date.now() - cap.releaseTimeMs) / (1000 * 60 * 60 * 24)) > 0 
-                          ? `${Math.round((Date.now() - cap.releaseTimeMs) / (1000 * 60 * 60 * 24))}d ago` 
-                          : "recently"}
-                      </div>
-                    </div>
-                  ))}
-                </>
-              ) : (
-                <div className="feed-item">
-                  <div className="fi-dot"></div>
-                  <div className="fi-text">
-                    No transaction footprint parsed on Sui Testnet. <span className="fi-badge">context only</span>
-                  </div>
-                  <div className="fi-time">now</div>
-                </div>
-              )}
+            <div className="sec-title" style={{ marginTop: '48px' }}>Your Legacy Profile</div>
+            <div className="sec-sub">On-chain history reconstructed from public blockchain records.</div>
+            <div className="stat-card" style={{ marginTop: '16px', background: 'transparent', border: '1px solid var(--border)' }}>
+              <div className="sc-left" style={{ borderRight: 'none', padding: '24px' }}>
+                {legacyProfile?.reconstructionStatus === 'ERROR' ? (
+                  <div style={{ color: 'var(--aged)', fontSize: '13px' }}>Legacy context temporarily unavailable.</div>
+                ) : legacyProfile?.reconstructionStatus === 'EMPTY' ? (
+                  <div style={{ color: 'var(--aged)', fontSize: '13px' }}>No on-chain history found for this wallet.</div>
+                ) : (
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, color: 'var(--aged)', fontSize: '13px', lineHeight: '2' }}>
+                    <li><strong style={{ color: 'var(--ivory)' }}>Active on-chain since:</strong> {legacyProfile?.firstActiveMs ? new Date(legacyProfile.firstActiveMs).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : "Not available"}</li>
+                    <li><strong style={{ color: 'var(--ivory)' }}>Recent activity detected:</strong> {legacyProfile?.lastActiveMs ? `${Math.round((Date.now() - legacyProfile.lastActiveMs) / (1000 * 60 * 60 * 24))} days ago` : "No"}</li>
+                    <li><strong style={{ color: 'var(--ivory)' }}>Transactions recorded:</strong> {legacyProfile?.transactionCount || 0}{legacyProfile?.hasMore ? '+' : ''}</li>
+                    <li><strong style={{ color: 'var(--ivory)' }}>Context snapshot:</strong> {legacyProfile?.firstActiveMs && legacyProfile?.lastActiveMs && legacyProfile?.transactionCount ? "Available" : "Not available"}</li>
+                  </ul>
+                )}
+                <div style={{ marginTop: '24px', fontSize: '11px', color: 'rgba(140, 133, 120, 0.6)', fontFamily: 'var(--mono)' }}>Powered by Tatum infrastructure</div>
+              </div>
             </div>
           </>
         )}
