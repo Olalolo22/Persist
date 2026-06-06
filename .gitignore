@@ -23,6 +23,7 @@
 # misc
 .DS_Store
 *.pem
+*.tgz
 
 # debug
 npm-debug.log*
@@ -50,4 +51,9 @@ scratch_spike.ts
 AGENTS.md
 CLAUDE.md
 bin/
+# Sui / Move
 contracts/build/
+contracts/.move/
+*.key
+*.keystore
+sui.keystore

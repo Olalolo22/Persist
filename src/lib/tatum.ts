@@ -141,3 +141,46 @@ export async function reconstructDigitalFootprint(
     };
   }
 }
+
+/**
+ * Checks if a wallet has been inactive for the specified window using Tatum RPC.
+ * Used by the Oracle backend to sign inactivity attestations.
+ *
+ * @param address The Sui address to check
+ * @param windowMs The required inactivity duration in milliseconds
+ * @returns true if the wallet has been inactive longer than windowMs, false otherwise.
+ */
+export async function isWalletInactive(
+  address: string,
+  windowMs: number,
+): Promise<boolean> {
+  try {
+    const response = await rpcCall("suix_queryTransactionBlocks", [
+      {
+        filter: { FromAddress: address },
+        options: { showInput: true },
+      },
+      null, // cursor
+      1, // Query just the 1 most recent transaction
+      true, // descendingOrder — newest first
+    ]) as any;
+
+    if (!response || !response.data || response.data.length === 0) {
+      // If there are no transactions at all, it's definitely inactive
+      return true;
+    }
+
+    const lastTx = response.data[0];
+    if (!lastTx.timestampMs) {
+      throw new Error("Missing timestampMs on transaction block.");
+    }
+
+    const lastActiveMs = parseInt(lastTx.timestampMs, 10);
+    const now = Date.now();
+
+    return (now - lastActiveMs) > windowMs;
+  } catch (err) {
+    console.error("Failed to check wallet inactivity:", err);
+    throw new Error("Unable to verify wallet inactivity through Tatum.");
+  }
+}

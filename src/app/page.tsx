@@ -24,7 +24,7 @@ export default function VaultDashboard() {
   const [incomingCapsules, setIncomingCapsules] = useState<CapsuleData[]>([]);
   const [legacyProfile, setLegacyProfile] = useState<DigitalLegacyProfile | null>(null);
   const [suiNames, setSuiNames] = useState<Record<string, string>>({});
-  const [activeTab, setActiveTab] = useState("Dashboard");
+  const [activeTab, setActiveTab] = useState("Overview");
   const [greeting, setGreeting] = useState("Good evening.");
 
   useEffect(() => {
@@ -294,17 +294,24 @@ export default function VaultDashboard() {
         <div className="sidebar-logo">persist</div>
         
         <div className="nav-menu">
-          <div className={`nav-item ${activeTab === 'Dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('Dashboard')}>
+          <div className={`nav-item ${activeTab === 'Overview' ? 'active' : ''}`} onClick={() => setActiveTab('Overview')}>
             <div className="nav-dot"></div>
-            Dashboard
+            Overview
           </div>
           <div className={`nav-item ${activeTab === 'My Capsules' ? 'active' : ''}`} onClick={() => setActiveTab('My Capsules')}>
             <div className="nav-dot"></div>
             My Capsules
           </div>
-          <div className={`nav-item ${activeTab === 'Nominees' ? 'active' : ''}`} onClick={() => setActiveTab('Nominees')}>
-            <div className="nav-dot"></div>
-            Nominees
+          <div className={`nav-item ${activeTab === 'Capsules Waiting For You' ? 'active' : ''}`} onClick={() => setActiveTab('Capsules Waiting For You')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="nav-dot"></div>
+              Capsules Waiting For You
+            </div>
+            {incomingCapsules.length > 0 && (
+              <div style={{ background: '#ff6b6b', color: '#100f0d', fontSize: '10px', padding: '2px 6px', borderRadius: '12px', fontWeight: 'bold', fontFamily: 'var(--mono)' }}>
+                {incomingCapsules.length}
+              </div>
+            )}
           </div>
           <div className={`nav-item ${activeTab === 'The Epitaph' ? 'active' : ''}`} onClick={() => setActiveTab('The Epitaph')}>
             <div className="nav-dot"></div>
@@ -330,24 +337,24 @@ export default function VaultDashboard() {
           </Link>
         </div>
 
-        {activeTab === 'Dashboard' && (
+        {activeTab === 'Overview' && (
           <>
             <div className="stat-card">
               <div className="sc-left">
                 <div className="sc-badge">
                   <div className="sc-dot"></div>
-                  <div className="sc-status">On-chain status: sealed</div>
+                  <div className="sc-status">On-chain status: secured</div>
                 </div>
                 
-                <div className="sc-title">All capsules verified on Sui.</div>
+                <div className="sc-title">Your legacy is cryptographically secured.</div>
                 <div className="sc-desc">
                   Your capsules are sealed and enforced by smart contract. Their state is determined solely by on-chain conditions — nothing else can trigger or alter them.
                 </div>
 
                 <div className="sc-grid">
                   <div>
-                    <div className="sc-stat-label">Contract state</div>
-                    <div className="sc-stat-val">locked</div>
+                    <div className="sc-stat-label">Release mechanism</div>
+                    <div className="sc-stat-val">sealed</div>
                   </div>
                   <div>
                     <div className="sc-stat-label">Capsules</div>
@@ -375,7 +382,37 @@ export default function VaultDashboard() {
                     <div className="sc-center"></div>
                   </div>
                 </div>
-                <div className="sc-state-label">contract: sealed</div>
+                <div className="sc-state-label">status: secured</div>
+              </div>
+            </div>
+
+            <div className="stat-card" style={{ marginTop: '16px', background: 'rgba(28,26,22,0.5)', border: '1px solid rgba(184,151,74,0.3)', padding: '16px' }}>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ fontSize: '13px', color: 'var(--ivory)', marginBottom: '4px', fontFamily: 'var(--serif)' }}>Decentralized Access Only</div>
+                  <p style={{ fontSize: '12px', color: 'var(--aged)', lineHeight: '1.5', margin: 0 }}>Decryption keys are never stored by Persist. Your legacy remains inaccessible to anyone but your intended recipient.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="sec-title" style={{ marginTop: '48px' }}>How This Capsule Works</div>
+            <div className="sec-sub">The four infrastructure layers protecting your legacy.</div>
+            <div className="how-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginTop: '16px', gap: '12px' }}>
+              <div className="how-card" style={{ padding: '16px' }}>
+                <div style={{ fontSize: '14px', color: 'var(--ivory)', marginBottom: '8px', fontFamily: 'var(--serif)' }}>Sui</div>
+                <div style={{ fontSize: '12px', color: 'var(--aged)', lineHeight: '1.5' }}>Stores the release conditions and nominee information.</div>
+              </div>
+              <div className="how-card" style={{ padding: '16px' }}>
+                <div style={{ fontSize: '14px', color: 'var(--ivory)', marginBottom: '8px', fontFamily: 'var(--serif)' }}>Walrus</div>
+                <div style={{ fontSize: '12px', color: 'var(--aged)', lineHeight: '1.5' }}>Preserves the encrypted capsule contents permanently.</div>
+              </div>
+              <div className="how-card" style={{ padding: '16px' }}>
+                <div style={{ fontSize: '14px', color: 'var(--ivory)', marginBottom: '8px', fontFamily: 'var(--serif)' }}>Seal</div>
+                <div style={{ fontSize: '12px', color: 'var(--aged)', lineHeight: '1.5' }}>Controls when the decryption key can be reconstructed.</div>
+              </div>
+              <div className="how-card" style={{ padding: '16px' }}>
+                <div style={{ fontSize: '14px', color: 'var(--ivory)', marginBottom: '8px', fontFamily: 'var(--serif)' }}>Tatum</div>
+                <div style={{ fontSize: '12px', color: 'var(--aged)', lineHeight: '1.5' }}>Captures a snapshot of the creator's public on-chain history.</div>
               </div>
             </div>
 
@@ -403,8 +440,8 @@ export default function VaultDashboard() {
 
         {activeTab === 'My Capsules' && (
           <>
-            <div className="sec-title">My capsules</div>
-            <div className="sec-sub">State enforced by Sui smart contract</div>
+            <div className="sec-title">My Capsules</div>
+            <div className="sec-sub">Encrypted and securely preserved on Walrus</div>
             
             {createdCapsules.length === 0 ? (
               <div className="empty-state">
@@ -444,7 +481,7 @@ export default function VaultDashboard() {
                       </div>
                       <div className="cc-lock">
                         <div className="cc-lock-dot"></div>
-                        <div className="cc-lock-text">contract: locked</div>
+                        <div className="cc-lock-text">status: sealed</div>
                       </div>
                     </div>
                   </div>
@@ -454,9 +491,9 @@ export default function VaultDashboard() {
           </>
         )}
 
-        {activeTab === 'Nominees' && (
+        {activeTab === 'Capsules Waiting For You' && (
           <>
-            <div className="sec-title">Incoming claims nominated to you</div>
+            <div className="sec-title">Capsules Waiting For You</div>
             <div className="sec-sub">State enforced by Sui smart contract</div>
             
             {incomingCapsules.length > 0 ? (
@@ -491,9 +528,9 @@ export default function VaultDashboard() {
         {activeTab === 'The Epitaph' && (
           <>
             <div className="sec-title">The Epitaph</div>
-            <div className="sec-sub">Public legacy memorial. Coming soon.</div>
+            <div className="sec-sub">Coming soon.</div>
             <div className="empty-state">
-              <div className="es-text">The Epitaph allows you to leave a cryptographically verified public message to the world.</div>
+              <div className="es-text">Write the words you want them to keep forever.</div>
             </div>
           </>
         )}

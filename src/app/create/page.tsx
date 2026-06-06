@@ -40,6 +40,7 @@ export default function CreateCapsule() {
   const [description, setDescription] = useState("");
   const [secretMessage, setSecretMessage] = useState("");
   const [epitaph, setEpitaph] = useState("");
+  const [selectedFile, setSelectedFile] = useState<{name: string, type: string, base64: string} | null>(null);
   
   const [nomineeName, setNomineeName] = useState("");
   const [nomineeInput, setNomineeInput] = useState("");
@@ -66,15 +67,14 @@ export default function CreateCapsule() {
     }
   }, [currentAccount]);
 
-  const [selectedTypes, setSelectedTypes] = useState<string[]>(["Seed phrase"]);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(["Wallet Recovery"]);
 
   const contentTypesList = [
-    { label: "Seed phrase", icon: "🔑", sub: "12 or 24 word recovery phrase" },
-    { label: "Private key", icon: "🗝️", sub: "Raw or WIF format" },
-    { label: "Document", icon: "📄", sub: "PDF, image, or text file" },
-    { label: "Personal letter", icon: "✉️", sub: "A message for your intended recipient" },
-    { label: "Passwords", icon: "🔐", sub: "Account credentials or notes" },
-    { label: "The Epitaph", icon: "📝", sub: "Your final on-chain message" }
+    { label: "Wallet Recovery", sub: "Seed phrase, private key, or keystore" },
+    { label: "Account Recovery", sub: "Passwords, PINs, or 2FA backups" },
+    { label: "Document", sub: "PDF, image, or text file" },
+    { label: "Instructions", sub: "Steps for your nominee to follow" },
+    { label: "Personal Letter", sub: "A message for your intended recipient" }
   ];
 
   const handleNomineeChange = async (value: string) => {
@@ -103,6 +103,34 @@ export default function CreateCapsule() {
     } else {
       setNomineeAddress(value);
     }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setSelectedFile(null);
+      return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+      toast("File size exceeds 5MB limit", "error");
+      e.target.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      if (result) {
+        const base64 = result.split(',')[1];
+        setSelectedFile({
+          name: file.name,
+          type: file.type || "application/octet-stream",
+          base64,
+        });
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const toggleContentType = (typeLabel: string) => {
@@ -161,6 +189,25 @@ export default function CreateCapsule() {
       setSealingStep("encrypting");
       setLoadingStatus("Creating draft capsule on Sui...");
 
+      let oraclePubKeyBytes: number[] = [];
+      let inactivityWindowMs = 0;
+
+      if (triggerType === "inactivity") {
+        inactivityWindowMs = inactivityDays * 24 * 60 * 60 * 1000;
+        try {
+          const res = await fetch("/api/oracle/pubkey");
+          if (res.ok) {
+            const data = await res.json();
+            if (data.pubKeyHex) {
+               const { fromHex } = await import("@mysten/sui/utils");
+               oraclePubKeyBytes = Array.from(fromHex(data.pubKeyHex));
+            }
+          }
+        } catch (e) {
+          console.warn("Could not fetch oracle pubkey", e);
+        }
+      }
+
       const createTx = new Transaction();
       createTx.moveCall({
         target: `${process.env.NEXT_PUBLIC_PERSIST_PACKAGE_ID}::capsule::create_capsule`,
@@ -168,6 +215,8 @@ export default function CreateCapsule() {
           createTx.pure.vector("u8", []),
           createTx.pure.address(nomineeAddress),
           createTx.pure.u64(releaseTimeMs),
+          createTx.pure.vector("u8", oraclePubKeyBytes),
+          createTx.pure.u64(inactivityWindowMs),
           createTx.object("0x6"),
         ],
       });
@@ -195,7 +244,11 @@ export default function CreateCapsule() {
       setLoadingStatus("Performing local threshold encryption via Sui Seal...");
 
       const sealClient = createSealClient(suiClient);
-      const plaintextBytes = new TextEncoder().encode(secretMessage);
+      const secretPayload = {
+        text: secretMessage,
+        file: selectedFile
+      };
+      const plaintextBytes = new TextEncoder().encode(JSON.stringify(secretPayload));
       const encryptedBytes = await encryptForCapsule(sealClient, capsuleId, plaintextBytes);
 
       setSealingStep("uploading");
@@ -257,7 +310,7 @@ export default function CreateCapsule() {
           <p style={{ fontSize: '12px', color: 'var(--aged)', marginBottom: '40px' }}>Your digital heirloom is written to Walrus permanent storage and enforced by an immutable Sui smart contract.</p>
 
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', padding: '24px', borderRadius: '12px', textAlign: 'left', marginBottom: '40px' }}>
-            <span style={{ fontSize: '10px', color: 'var(--gold)', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.15em', fontFamily: 'var(--mono)', display: 'block', marginBottom: '8px' }}>Nominee Claim URL (Dead Drop)</span>
+            <span style={{ fontSize: '10px', color: 'var(--gold)', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.15em', fontFamily: 'var(--mono)', display: 'block', marginBottom: '8px' }}>Shareable claim link (wallet protected)</span>
             <p style={{ fontSize: '12px', color: 'var(--aged)', marginBottom: '16px', lineHeight: 1.6 }}>Persist is fully serverless. Share this private Claim URL with your nominee. Decryption is authorised exclusively by their wallet.</p>
             <div style={{ display: 'flex', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: '6px', padding: '12px' }}>
               <input type="text" readOnly value={getClaimUrl()} style={{ flex: 1, background: 'transparent', border: 'none', color: 'var(--ivory)', fontSize: '12px', fontFamily: 'var(--mono)', outline: 'none' }} />
@@ -289,11 +342,11 @@ export default function CreateCapsule() {
           </div>
           <div className={`ss ${sealingStep === "uploading" || sealingStep === "deploying" || sealingStep === "finalizing" ? 'active' : 'pending'}`}>
             <div className="ss-icon">{sealingStep === "uploading" || sealingStep === "deploying" || sealingStep === "finalizing" ? "✓" : "·"}</div>
-            <div className="ss-text">Payload written to Walrus storage</div>
+            <div className="ss-text">Preserving contents permanently on Walrus</div>
           </div>
           <div className={`ss ${sealingStep === "deploying" ? 'active' : sealingStep === "finalizing" ? 'done' : 'pending'}`}>
             <div className="ss-icon">{sealingStep === "deploying" ? <span className="mini-spinner"></span> : sealingStep === "finalizing" ? "✓" : "·"}</div>
-            <div className="ss-text">Deploying Sui Move contract...</div>
+            <div className="ss-text">Enforcing release rules on Sui...</div>
           </div>
           <div className={`ss ${sealingStep === "finalizing" ? 'active' : 'pending'}`}>
             <div className="ss-icon">{sealingStep === "finalizing" ? <span className="mini-spinner"></span> : "·"}</div>
@@ -340,7 +393,7 @@ export default function CreateCapsule() {
 
           <div className={`step ${step === 1 ? 'active' : ''}`}>
             <div className="step-eyebrow">Step 1 of 5</div>
-            <div className="step-title">What do you want to call this capsule?</div>
+            <div className="step-title">What are you preserving?</div>
             <div className="step-sub">Give it a name you'll recognize. Your intended recipient will see this when the capsule unlocks.</div>
 
             <div className="field">
@@ -373,7 +426,6 @@ export default function CreateCapsule() {
             <div className="content-types">
               {contentTypesList.map(ct => (
                 <div key={ct.label} className={`content-type ${selectedTypes.includes(ct.label) ? 'selected' : ''}`} onClick={() => toggleContentType(ct.label)}>
-                  <div className="ct-icon">{ct.icon}</div>
                   <div>
                     <div className="ct-label">{ct.label}</div>
                     <div className="ct-sub">{ct.sub}</div>
@@ -383,14 +435,33 @@ export default function CreateCapsule() {
             </div>
 
             <div className="field">
-              <label>Add content</label>
-              <textarea placeholder="Paste your seed phrase, private key, or write your message here…" rows={5} style={{fontFamily:'var(--mono)', fontSize:'12px'}} value={secretMessage} onChange={e => setSecretMessage(e.target.value)}></textarea>
-              <div className="hint">Encrypted locally. Decrypted only by intended recipient after release. Max size 10MB.</div>
+              <label>Seal your assets or instructions</label>
+              <div style={{ padding: '16px', background: 'rgba(28,26,22,0.5)', border: '1px solid rgba(184,151,74,0.3)', borderRadius: '6px', marginBottom: '16px', display: 'flex', gap: '12px' }}>
+                <span style={{ color: 'var(--gold)' }}>🔒</span>
+                <div>
+                  <div style={{ fontSize: '13px', color: 'var(--ivory)', marginBottom: '4px', fontFamily: 'var(--serif)' }}>Local Encryption Only</div>
+                  <p style={{ fontSize: '12px', color: 'var(--aged)', margin: 0, lineHeight: 1.5 }}>This text is encrypted entirely within your browser using Sui Seal. Persist cannot read it, scan it, or retrieve it.</p>
+                </div>
+              </div>
+              <textarea placeholder="Paste your recovery data, account credentials, or write your message here…" rows={5} style={{fontFamily:'var(--mono)', fontSize:'12px'}} value={secretMessage} onChange={e => setSecretMessage(e.target.value)}></textarea>
+              
+              <div style={{ marginTop: '16px', background: 'rgba(28,26,22,0.5)', border: '1px dashed rgba(184,151,74,0.3)', padding: '16px', borderRadius: '6px' }}>
+                <div style={{ fontSize: '12px', color: 'var(--aged)', marginBottom: '8px', fontFamily: 'var(--serif)' }}>Attach a secure file</div>
+                <input type="file" onChange={handleFileChange} style={{ fontSize: '12px', color: 'var(--ivory)', fontFamily: 'var(--mono)', width: '100%' }} />
+                {selectedFile && (
+                  <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--gold)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{flex: 1, fontFamily: 'var(--mono)'}}>{selectedFile.name} ({(selectedFile.base64.length * 0.75 / 1024).toFixed(1)} KB)</span>
+                    <button onClick={() => { setSelectedFile(null); const input = document.querySelector('input[type="file"]') as HTMLInputElement; if(input) input.value = ''; }} style={{ background: 'transparent', border: 'none', color: '#ff6b6b', cursor: 'pointer', fontSize: '12px' }}>Remove</button>
+                  </div>
+                )}
+              </div>
+
+              <div className="hint">Encrypted locally. Decrypted only by intended recipient after release. Max file size 5MB.</div>
             </div>
 
             <div className="step-nav">
               <button className="btn-back-step" onClick={() => setStep(1)}>← Back</button>
-              <button className="btn-next" onClick={() => secretMessage.trim() ? setStep(3) : toast("Content is required", "error")}>Continue →</button>
+              <button className="btn-next" onClick={() => (secretMessage.trim() || selectedFile) ? setStep(3) : toast("Content or a file is required", "error")}>Continue →</button>
             </div>
           </div>
 
@@ -558,7 +629,7 @@ export default function CreateCapsule() {
               <div className="review-row"><div className="rk">Name</div><div className="rv">{nomineeName || "Untitled"}</div></div>
               {nomineeInput.endsWith(".sui") && <div className="review-row"><div className="rk">SuiNS name</div><div className="rv highlight">{nomineeInput}</div></div>}
               <div className="review-row"><div className="rk">Resolved address</div><div className="rv" style={{maxWidth:'200px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{nomineeAddress}</div></div>
-              <div className="review-row"><div className="rk">Notified via</div><div className="rv" style={{color:'var(--aged)'}}>Manual Dead Drop (Claim URL)</div></div>
+              <div className="review-row"><div className="rk">Notified via</div><div className="rv" style={{color:'var(--aged)'}}>Shareable claim link (wallet protected)</div></div>
             </div>
 
             <div className="seal-warning">

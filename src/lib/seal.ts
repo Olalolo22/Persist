@@ -79,6 +79,7 @@ export async function decryptCapsule(
  */
 export function buildSealApproveTx(
   capsuleObjectId: string,
+  oracleSignatureHex?: string,
 ): Transaction {
   const tx = new Transaction();
   const cleanPackageId = PACKAGE_ID.startsWith("0x") ? PACKAGE_ID : `0x${PACKAGE_ID}`;
@@ -88,11 +89,17 @@ export function buildSealApproveTx(
   // We extract the bytes from the hexadecimal object ID representation.
   const capsuleIdBytes = fromHex(cleanCapsuleObjectId.replace("0x", ""));
 
+  let oracleSignatureBytes: number[] = [];
+  if (oracleSignatureHex) {
+    oracleSignatureBytes = Array.from(fromHex(oracleSignatureHex.replace("0x", "")));
+  }
+
   tx.moveCall({
     target: `${cleanPackageId}::capsule::seal_approve`,
     arguments: [
       tx.pure.vector("u8", Array.from(capsuleIdBytes)),
       tx.object(cleanCapsuleObjectId),
+      tx.pure.vector("u8", oracleSignatureBytes),
       tx.object("0x6"), // Clock object
     ],
   });
@@ -129,6 +136,7 @@ export interface CapsuleData {
   creator: string;
   nominee: string;
   releaseTimeMs: number;
+  inactivityWindowMs?: number;
   status: number; // 0 = LOCKED, 1 = CLAIMED
   walrusBlobId: string;
 }
@@ -183,6 +191,7 @@ export async function fetchAllCapsules(
         objectMap.set(obj.data.objectId, {
           status: fields.status,
           walrusBlobId,
+          inactivityWindowMs: parseInt(fields.inactivity_window_ms || "0", 10),
         });
       }
     }
@@ -195,6 +204,7 @@ export async function fetchAllCapsules(
           creator: c.creator,
           nominee: c.nominee,
           releaseTimeMs: c.releaseTimeMs,
+          inactivityWindowMs: onChain.inactivityWindowMs,
           status: onChain.status,
           walrusBlobId: onChain.walrusBlobId,
         });
@@ -235,6 +245,7 @@ export async function fetchCapsuleById(
         creator: fields.creator,
         nominee: fields.nominee,
         releaseTimeMs: parseInt(fields.release_time_ms, 10),
+        inactivityWindowMs: parseInt(fields.inactivity_window_ms || "0", 10),
         status: fields.status,
         walrusBlobId,
       };

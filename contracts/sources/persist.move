@@ -65,6 +65,10 @@ module persist::capsule {
         release_time_ms: u64,
         /// 0 = LOCKED, 1 = CLAIMED
         status: u8,
+        /// Ed25519 public key of the trusted oracle
+        oracle_pubkey: vector<u8>,
+        /// Required inactivity window in milliseconds for the oracle
+        inactivity_window_ms: u64,
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -98,6 +102,7 @@ module persist::capsule {
     entry fun seal_approve(
         id: vector<u8>,
         capsule: &PersistCapsule,
+        oracle_signature: vector<u8>,
         clock: &Clock,
         ctx: &TxContext,
     ) {
@@ -109,8 +114,30 @@ module persist::capsule {
         // 1. Caller must be the designated nominee
         assert!(ctx.sender() == capsule.nominee, ENotNominee);
 
-        // 3. Release time must have passed
-        assert!(clock.timestamp_ms() >= capsule.release_time_ms, ENotReady);
+        // 2. Check release condition (Hybrid: Oracle or Time Fallback)
+        let mut ready = false;
+
+        // Path A: Oracle Attestation
+        // If an oracle signature is provided, verify it. The oracle signs the capsule ID.
+        if (!vector::is_empty(&oracle_signature)) {
+            // Note: sui::ed25519::ed25519_verify takes (signature, public_key, message)
+            let is_valid = sui::ed25519::ed25519_verify(
+                &oracle_signature,
+                &capsule.oracle_pubkey,
+                &id,
+            );
+            if (is_valid) {
+                ready = true;
+            }
+        };
+
+        // Path B: Absolute Fallback
+        if (!ready && clock.timestamp_ms() >= capsule.release_time_ms) {
+            ready = true;
+        };
+
+        // 3. Must meet at least one release condition
+        assert!(ready, ENotReady);
     }
 
     // ────────────────────────────────────────────────────────────────
@@ -127,6 +154,8 @@ module persist::capsule {
         walrus_blob_id: vector<u8>,
         nominee: address,
         release_time_ms: u64,
+        oracle_pubkey: vector<u8>,
+        inactivity_window_ms: u64,
         clock: &Clock,
         ctx: &mut TxContext,
     ) {
@@ -148,6 +177,8 @@ module persist::capsule {
             nominee,
             release_time_ms,
             status: STATUS_LOCKED,
+            oracle_pubkey,
+            inactivity_window_ms,
         };
 
         event::emit(CapsuleCreated {
@@ -207,4 +238,5 @@ module persist::capsule {
     public fun get_nominee(capsule: &PersistCapsule): address { capsule.nominee }
     public fun get_walrus_blob_id(capsule: &PersistCapsule): &vector<u8> { &capsule.walrus_blob_id }
     public fun get_release_time_ms(capsule: &PersistCapsule): u64 { capsule.release_time_ms }
+    public fun get_inactivity_window_ms(capsule: &PersistCapsule): u64 { capsule.inactivity_window_ms }
 }

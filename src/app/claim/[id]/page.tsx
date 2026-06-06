@@ -38,6 +38,7 @@ export default function ClaimCapsuleDetails() {
   const [epitaph, setEpitaph] = useState<string>("");
   const [encryptedPayloadB64, setEncryptedPayloadB64] = useState<string>("");
   const [decryptedMessage, setDecryptedMessage] = useState<string | null>(null);
+  const [decryptedFile, setDecryptedFile] = useState<{name: string, type: string, base64: string} | null>(null);
 
   const [uiState, setUiState] = useState<"locked" | "unlocked" | "decrypting" | "revealed">("locked");
   const [decryptStep, setDecryptStep] = useState<"contract" | "session" | "payload">("contract");
@@ -180,7 +181,43 @@ export default function ClaimCapsuleDetails() {
       setDecryptStep("payload");
       await new Promise((resolve) => setTimeout(resolve, 800));
 
-      const approveTx = buildSealApproveTx(capsule.objectId);
+      let oracleSignatureHex: string | undefined = undefined;
+      if (capsule.inactivityWindowMs && capsule.inactivityWindowMs > 0) {
+        let attempt = 0;
+        let success = false;
+        
+        while (attempt < 3 && !success) {
+          try {
+            const res = await fetch("/api/attest", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ capsuleId: capsule.objectId }),
+            });
+            if (res.ok) {
+              const data = await res.json();
+              oracleSignatureHex = data.signature;
+              success = true;
+            } else {
+              const errData = await res.json();
+              if (res.status === 403) {
+                 console.log("Wallet still active, relying on time fallback:", errData.error);
+                 break; // Don't retry if the user is genuinely still active
+              }
+              throw new Error(errData.error || "Oracle API failed");
+            }
+          } catch (e) {
+            attempt++;
+            console.warn(`Oracle attestation attempt ${attempt} failed`, e);
+            if (attempt >= 3) {
+              console.log("Max retries reached. Will attempt to proceed using time fallback.");
+            } else {
+              await new Promise(r => setTimeout(r, Math.pow(2, attempt) * 1000));
+            }
+          }
+        }
+      }
+
+      const approveTx = buildSealApproveTx(capsule.objectId, oracleSignatureHex);
       const rawTxBytes = await approveTx.build({
         client: suiClient,
         onlyTransactionKind: true,
@@ -195,7 +232,20 @@ export default function ClaimCapsuleDetails() {
       );
 
       const secretText = new TextDecoder().decode(decryptedBytes);
-      setDecryptedMessage(secretText);
+      
+      try {
+        const payload = JSON.parse(secretText);
+        if (payload.text !== undefined || payload.file !== undefined) {
+          setDecryptedMessage(payload.text || "");
+          if (payload.file) {
+            setDecryptedFile(payload.file);
+          }
+        } else {
+          setDecryptedMessage(secretText);
+        }
+      } catch (e) {
+        setDecryptedMessage(secretText);
+      }
 
       setUiState("revealed");
       setTimeout(() => {
@@ -340,7 +390,7 @@ export default function ClaimCapsuleDetails() {
             <div className="decrypt-steps">
               <div className={`d-step ${decryptStep !== "contract" ? 'done' : 'active'}`}>
                 <div className={`d-icon ${decryptStep !== "contract" ? 'done' : 'active'}`}>{decryptStep !== "contract" ? "✓" : ""}</div>
-                <div className={`d-label ${decryptStep !== "contract" ? 'done' : 'active'}`}>Sui contract state verified</div>
+                <div className={`d-label ${decryptStep !== "contract" ? 'done' : 'active'}`}>Sui release conditions verified</div>
               </div>
               <div className={`d-step ${decryptStep === "payload" ? 'done' : decryptStep === "session" ? 'active' : ''}`}>
                 <div className={`d-icon ${decryptStep === "payload" ? 'done' : decryptStep === "session" ? 'active' : 'pending'}`}>{decryptStep === "payload" ? "✓" : decryptStep === "session" ? "" : "·"}</div>
@@ -348,7 +398,7 @@ export default function ClaimCapsuleDetails() {
               </div>
               <div className={`d-step ${decryptStep === "payload" ? 'active' : ''}`}>
                 <div className={`d-icon ${decryptStep === "payload" ? 'active' : 'pending'}`}>{decryptStep === "payload" ? "" : "·"}</div>
-                <div className={`d-label ${decryptStep === "payload" ? 'active' : 'pending'}`}>Retrieving payload from Walrus...</div>
+                <div className={`d-label ${decryptStep === "payload" ? 'active' : 'pending'}`}>Retrieving sealed contents from Walrus...</div>
               </div>
             </div>
 
@@ -381,20 +431,35 @@ export default function ClaimCapsuleDetails() {
 
                 <div className="item-list">
                   <div className="item" onClick={() => setExpandedPayload(!expandedPayload)}>
-                    <div className="item-icon">🔑</div>
                     <div style={{ flex: 1 }}>
-                      <div className="item-label">Decrypted secret payload</div>
+                      <div className="item-label">Capsule Contents</div>
                       <div className="item-sub">Sui Seal decrypted</div>
                     </div>
                     <div className="item-arrow">{expandedPayload ? "▲" : "▼"}</div>
                   </div>
 
-                  {expandedPayload && decryptedMessage && (
+                  {expandedPayload && (decryptedMessage || decryptedFile) && (
                     <div style={{ background: 'rgba(28,26,22,0.8)', border: '1px solid var(--border)', borderRadius: '8px', padding: '16px', fontSize: '13px', fontFamily: 'var(--mono)', color: 'var(--ivory)', whiteSpace: 'pre-wrap', lineHeight: '1.6' }}>
                       {decryptedMessage}
-                      <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(46,43,37,0.5)', textAlign: 'right' }}>
-                        <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(decryptedMessage); toast("Payload copied", "success"); }} style={{ background: 'transparent', color: 'var(--gold)', border: '1px solid rgba(184,151,74,0.4)', padding: '6px 12px', fontSize: '10px', fontFamily: 'var(--mono)', borderRadius: '4px', cursor: 'pointer' }}>COPY PAYLOAD</button>
-                      </div>
+
+                      {decryptedFile && (
+                        <div style={{ marginTop: '16px', padding: '12px', background: 'rgba(184,151,74,0.1)', border: '1px dashed rgba(184,151,74,0.3)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ color: 'var(--gold)' }}>📎 {decryptedFile.name}</div>
+                          <button onClick={(e) => { 
+                            e.stopPropagation(); 
+                            const link = document.createElement('a');
+                            link.href = `data:${decryptedFile.type};base64,${decryptedFile.base64}`;
+                            link.download = decryptedFile.name;
+                            link.click();
+                          }} style={{ background: 'transparent', color: 'var(--ivory)', border: '1px solid rgba(184,151,74,0.4)', padding: '6px 12px', fontSize: '10px', fontFamily: 'var(--mono)', borderRadius: '4px', cursor: 'pointer' }}>DOWNLOAD FILE</button>
+                        </div>
+                      )}
+
+                      {decryptedMessage && (
+                        <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(46,43,37,0.5)', textAlign: 'right' }}>
+                          <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(decryptedMessage); toast("Payload copied", "success"); }} style={{ background: 'transparent', color: 'var(--gold)', border: '1px solid rgba(184,151,74,0.4)', padding: '6px 12px', fontSize: '10px', fontFamily: 'var(--mono)', borderRadius: '4px', cursor: 'pointer' }}>COPY TEXT</button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
