@@ -65,6 +65,8 @@ All use cases run on the same contract. The interface adapts to the context.
 
 Agent-native data layer — As AI agents become primary consumers of on-chain data, Persist's Walrus + Tatum architecture positions the protocol as infrastructure for agent-readable encrypted state. Trustless key handoff, time-locked disclosure, and conditional access are primitives agents need. This is the long-term expansion surface that Persist will be exploring and building around.
 
+Agent memory succession — Walrus Memory gives agents persistent, verifiable context. Persist gives that memory a successor. When an agent goes silent — detected via Tatum's activity monitoring — its Walrus Memory and credentials seal into a capsule and transfer trustlessly to a designated operator or successor agent, enforced on Sui.
+
 **Programmable access conditions** — Extending the Move contract to support richer unlock logic: multi-party approval, on-chain event triggers, and composable condition chains.
 
 ---
