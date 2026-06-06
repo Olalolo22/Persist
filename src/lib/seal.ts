@@ -180,7 +180,7 @@ export async function fetchAllCapsules(
       options: { showContent: true },
     });
 
-    const objectMap = new Map<string, { status: number; walrusBlobId: string }>();
+    const objectMap = new Map<string, { status: number; walrusBlobId: string; inactivityWindowMs?: number }>();
     for (const obj of objectsData) {
       if (obj.data?.content?.dataType === "moveObject") {
         const fields = obj.data.content.fields;

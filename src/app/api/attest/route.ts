@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { SuiClient } from "@mysten/sui/client";
+import { SuiJsonRpcClient as SuiClient } from "@mysten/sui/jsonRpc";
 import { isWalletInactive } from "@/lib/tatum";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { fromHex, toHex } from "@mysten/sui/utils";
@@ -14,7 +14,7 @@ export async function POST(req: Request) {
     }
 
     const rpcUrl = process.env.NEXT_PUBLIC_TATUM_RPC_URL || "https://sui-testnet.gateway.tatum.io/";
-    const suiClient = new SuiClient({ url: rpcUrl });
+    const suiClient = new SuiClient({ url: rpcUrl } as any);
 
     // 1. Fetch the capsule object to read creator and inactivity window securely
     const capsuleObj = await suiClient.getObject({
