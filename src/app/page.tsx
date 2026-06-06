@@ -53,7 +53,7 @@ export default function VaultDashboard() {
         setCreatedCapsules(created);
 
         const incoming = allCapsules.filter(
-          (c) => c.nominee.toLowerCase() === currentAddress.toLowerCase() && c.status === 0
+          (c) => c.nominee.toLowerCase() === currentAddress.toLowerCase()
         );
         setIncomingCapsules(incoming);
 
@@ -456,12 +456,13 @@ export default function VaultDashboard() {
               <div className="grid-2">
                 {incomingCapsules.map((cap) => {
                   const isReady = Date.now() >= cap.releaseTimeMs;
+                  const isClaimed = cap.status === 1;
                   return (
                     <div key={cap.objectId} className="cap-card" onClick={() => router.push(`/claim/${cap.objectId}`)}>
                       <div className="cc-top">
                         <div className="cc-name">Capsule {shortenAddress(cap.objectId)}</div>
-                        <div className={`cc-status ${isReady ? 'ready' : 'sealed'}`}>
-                          {isReady ? 'READY TO CLAIM' : 'LOCKED'}
+                        <div className={`cc-status ${isClaimed ? 'ready' : isReady ? 'ready' : 'sealed'}`}>
+                          {isClaimed ? 'CLAIMED' : isReady ? 'READY TO CLAIM' : 'LOCKED'}
                         </div>
                       </div>
                       <div className="cc-details">
