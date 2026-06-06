@@ -40,12 +40,24 @@ export async function uploadToWalrus(
 /**
  * Fetches an encrypted blob from Walrus using its Blob ID.
  */
-export async function fetchFromWalrus(blobId: string): Promise<ArrayBuffer> {
-  const response = await fetch(`/api/walrus/${blobId}`);
+export async function fetchFromWalrus(blobId: string, retries = 3, delayMs = 2000): Promise<ArrayBuffer> {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(`/api/walrus/${blobId}`);
 
-  if (!response.ok) {
-    throw new Error(`Walrus fetch failed: ${response.statusText}`);
+      if (!response.ok) {
+        throw new Error(`Walrus fetch failed: ${response.statusText}`);
+      }
+
+      return await response.arrayBuffer();
+    } catch (error) {
+      if (attempt === retries) {
+        throw new Error(`Failed to fetch capsule after ${retries} attempts. Walrus may be experiencing high latency.`);
+      }
+      console.warn(`Walrus fetch attempt ${attempt} failed, retrying in ${delayMs}ms...`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
   }
-
-  return await response.arrayBuffer();
+  
+  throw new Error("Failed to fetch capsule from Walrus.");
 }

@@ -2,15 +2,16 @@ import { NextResponse } from "next/server";
 
 export async function GET(
   request: Request,
-  { params }: { params: { blobId: string } }
+  { params }: { params: Promise<{ blobId: string }> }
 ) {
-  const { blobId } = params;
+  const { blobId } = await params;
 
   if (!blobId) {
     return new NextResponse("Missing blobId", { status: 400 });
   }
 
-  const walrusUrl = `https://aggregator.walrus-testnet.walrus.space/v1/blobs/${blobId}`;
+  const aggregator = process.env.NEXT_PUBLIC_WALRUS_AGGREGATOR || "https://aggregator.walrus-testnet.walrus.space/v1/blobs";
+  const walrusUrl = `${aggregator}/${blobId}`;
 
   try {
     const response = await fetch(walrusUrl);
