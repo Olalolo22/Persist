@@ -42,7 +42,7 @@ export default function ClaimCapsuleDetails() {
   const [decryptStep, setDecryptStep] = useState<"contract" | "session" | "payload">("contract");
   const [countdown, setCountdown] = useState<string>("");
   const [revealCardVisible, setRevealCardVisible] = useState(false);
-  const [expandedPayload, setExpandedPayload] = useState(false);
+  const [expandedPayload, setExpandedPayload] = useState(true);
 
   const [suiNames, setSuiNames] = useState<Record<string, string>>({});
 
@@ -111,7 +111,7 @@ export default function ClaimCapsuleDetails() {
     if (!capsule) return;
 
     if (capsule.status === 1) {
-      setUiState("unlocked");
+      setUiState((prev) => prev === "revealed" ? "revealed" : "unlocked");
       return;
     }
 
@@ -120,10 +120,10 @@ export default function ClaimCapsuleDetails() {
       const diff = capsule.releaseTimeMs - now;
 
       if (diff <= 0) {
-        setUiState("unlocked");
+        setUiState((prev) => (prev === "decrypting" || prev === "revealed") ? prev : "unlocked");
         setCountdown("READY");
       } else {
-        setUiState("locked");
+        setUiState((prev) => (prev === "decrypting" || prev === "revealed") ? prev : "locked");
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
