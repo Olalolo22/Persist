@@ -21,7 +21,7 @@ const testnetUrl = "https://testnet.sui.rpcpool.com/";
 const networks = {
   testnet: new SuiJsonRpcClient({ url: testnetUrl, network: "testnet" }),
   mainnet: new SuiJsonRpcClient({
-    url: getJsonRpcFullnodeUrl("mainnet"),
+    url: process.env.NEXT_PUBLIC_TATUM_RPC_URL || getJsonRpcFullnodeUrl("mainnet"),
     network: "mainnet",
   }),
   devnet: new SuiJsonRpcClient({

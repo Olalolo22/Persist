@@ -274,6 +274,10 @@ export default function VaultDashboard() {
         <div className="footer">
           <div className="f-logo">persist</div>
           <div className="f-note">persist.app/claim — for nominees</div>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', marginTop: '24px', fontFamily: 'var(--mono)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <a href="https://github.com/Olalolo22/Persist" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--aged)', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.color = 'var(--ivory)'} onMouseOut={(e) => e.currentTarget.style.color = 'var(--aged)'}>GitHub</a>
+            <a href="https://x.com/persist_xyz?s=21" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--aged)', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.color = 'var(--ivory)'} onMouseOut={(e) => e.currentTarget.style.color = 'var(--aged)'}>X (Twitter)</a>
+          </div>
         </div>
       </>
     );
