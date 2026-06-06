@@ -37,7 +37,8 @@ The core protocol, proven in a working demo:
 
 Making Persist safe and complete enough for real assets:
 
-- **Mainnet launch** — Move from Testnet to Sui Mainnet.
+- **Mainnet launch** — Move from Testnet to Sui Mainnet. (we will be moving all of thes features to mainnet)
+- **SUIns -  Instead of sharing a raw wallet address, creators can nominate recipients by their SuiNS domain name (e.g. suleiman2.sui). Human-readable, harder to mistype, and significantly reduces the risk of sealing a capsule to the wrong address — which on a trustless system is irreversible
 - **The Epitaph (full)** — A public legacy message preserved on Walrus and recorded on Sui. While capsules are private and intended for a specific recipient, the Epitaph is meant for everyone. Readable by anyone with the link, permanently, without a server. Write the words you want them to keep forever.
 - **Heartbeat mechanism** — Creators ping the contract periodically to reset the inactivity clock. Provides an on-chain proof of life independent of general wallet activity, making the Absence Safeguard more robust against false positives.
 - **Nominee notifications** — When a capsule is sealed, the nominated wallet receives an on-chain signal that a capsule exists for them. The first time someone hears about Persist may be the day they're told something is waiting.
