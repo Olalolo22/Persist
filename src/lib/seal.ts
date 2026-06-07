@@ -5,11 +5,16 @@ import { fromHex } from "@mysten/sui/utils";
 
 const PACKAGE_ID = process.env.NEXT_PUBLIC_PERSIST_PACKAGE_ID!;
 
-// Mainnet key servers (NodeInfra, free, Open mode)
-const MAINNET_KEY_SERVERS = [
+// Testnet key servers (Mysten Labs, free, Open mode)
+const KEY_SERVERS = [
   {
-    objectId: "0x1afb3a57211ceff8f6781757821847e3ddae73f64e78ec8cd9349914ad985475",
-    url: typeof window !== "undefined" ? "/api/seal" : "https://open-seal-mainnet.nodeinfra.com",
+    objectId: '0x73d05d62c18d9374e3ea529e8e0ed6161da1a141a94d3f76ae3fe4e99356db75',
+    url: 'https://seal-key-server-testnet-1.mystenlabs.com',
+    weight: 1,
+  },
+  {
+    objectId: '0xf5d14a81a982144ae441cd7d64b09027f116a468bd36e7eca494f750591623c8',
+    url: 'https://seal-key-server-testnet-2.mystenlabs.com',
     weight: 1,
   },
 ];
@@ -21,7 +26,7 @@ export function createSealClient(suiClient: SuiJsonRpcClient): SealClient {
   // Cast client to any to satisfy SealCompatibleClient if type mismatch occurs
   return new SealClient({
     suiClient: suiClient as any,
-    serverConfigs: MAINNET_KEY_SERVERS,
+    serverConfigs: KEY_SERVERS,
     verifyKeyServers: true,
   });
 }
@@ -43,7 +48,7 @@ export async function encryptForCapsule(
   const cleanCapsuleId = capsuleId.startsWith("0x") ? capsuleId : `0x${capsuleId}`;
 
   const { encryptedObject } = await sealClient.encrypt({
-    threshold: 1,
+    threshold: 2,
     packageId: cleanPackageId,
     id: cleanCapsuleId,
     data,
