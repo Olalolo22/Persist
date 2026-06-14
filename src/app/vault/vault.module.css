@@ -1,0 +1,375 @@
+/* src/app/vault/vault.module.css */
+
+/* ============================================================
+   PAGE SHELL
+   ============================================================ */
+
+.page {
+  min-height: 100vh;
+  background: var(--amber-white);
+}
+
+/* ============================================================
+   PAGE HEADER
+   ============================================================ */
+
+.pageHeader {
+  background: linear-gradient(
+    180deg,
+    rgba(254, 243, 199, 0.8) 0%,
+    var(--amber-white) 100%
+  );
+  border-bottom: 1px solid rgba(217, 119, 6, 0.12);
+  padding: var(--space-12) 0 var(--space-6);
+}
+
+.headerTop {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: var(--space-6);
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+/* ============================================================
+   SUMMARY BAR
+   ============================================================ */
+
+.summaryBar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-6);
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(217, 119, 6, 0.12);
+  border-radius: var(--radius-lg);
+  width: fit-content;
+  backdrop-filter: blur(8px);
+}
+
+.summaryItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.summaryCount {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--stone-900);
+  margin-left: var(--space-1);
+}
+
+.summaryDivider {
+  width: 1px;
+  height: 20px;
+  background: rgba(217, 119, 6, 0.15);
+}
+
+/* ============================================================
+   FILTER TABS
+   ============================================================ */
+
+.filterTabs {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-6);
+  border-bottom: 1px solid rgba(217, 119, 6, 0.12);
+  padding-bottom: 0;
+}
+
+.filterTab {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--stone-500);
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-bottom: -1px;
+}
+
+.filterTab:hover {
+  color: var(--stone-900);
+}
+
+.filterTabActive {
+  color: var(--amber-deep);
+  border-bottom-color: var(--amber);
+}
+
+.filterCount {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--radius-full);
+  background: rgba(217, 119, 6, 0.1);
+  color: var(--amber-deep);
+  min-width: 20px;
+  text-align: center;
+}
+
+.filterTabActive .filterCount {
+  background: var(--amber);
+  color: white;
+}
+
+/* ============================================================
+   GRID
+   ============================================================ */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: var(--space-4);
+}
+
+/* ============================================================
+   CAPSULE CARD
+   ============================================================ */
+
+.capsuleCard {
+  background: white;
+  border: 1.5px solid rgba(217, 119, 6, 0.12);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+
+.capsuleCard:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+/* State-specific border accents */
+.capsuleCard--sealed {
+  border-color: rgba(217, 119, 6, 0.2);
+}
+
+.capsuleCard--approaching {
+  border-color: rgba(251, 191, 36, 0.45);
+  box-shadow: 0 0 0 1px rgba(251, 191, 36, 0.15);
+}
+
+.capsuleCard--approaching:hover {
+  box-shadow: 0 4px 20px rgba(251, 191, 36, 0.2);
+}
+
+.capsuleCard--revealed {
+  border-color: rgba(110, 231, 183, 0.4);
+  background: linear-gradient(
+    135deg,
+    rgba(110, 231, 183, 0.04) 0%,
+    white 50%
+  );
+}
+
+.capsuleCard--dormant {
+  border-color: var(--stone-200);
+  opacity: 0.7;
+}
+
+/* ============================================================
+   CARD INTERNALS
+   ============================================================ */
+
+.cardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.cardBadges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+
+.agentBadge {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  padding: 0.2rem 0.5rem;
+  background: rgba(110, 231, 183, 0.1);
+  color: var(--emerald-deep);
+  border: 1px solid rgba(110, 231, 183, 0.25);
+  border-radius: var(--radius-full);
+}
+
+.cardData {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+/* Approaching progress bar */
+.approachingBar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.approachingBarFill {
+  height: 3px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(
+    to right,
+    var(--amber) 0%,
+    var(--amber-glow) 75%,
+    rgba(251, 191, 36, 0.3) 100%
+  );
+  /* Width represents how close to unlock — hardcoded for demo */
+  /* In production: calculate from (elapsed / window) * 100% */
+  width: 82%;
+  position: relative;
+  overflow: hidden;
+}
+
+.approachingBarFill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 100%
+  );
+  animation: shimmer 2s infinite;
+}
+
+.cardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-3);
+  border-top: 1px solid rgba(217, 119, 6, 0.08);
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.cardActions {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* ============================================================
+   SKELETON CARDS
+   ============================================================ */
+
+.skeletonCard {
+  background: white;
+  border: 1.5px solid rgba(217, 119, 6, 0.08);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+  min-height: 200px;
+}
+
+/* ============================================================
+   EMPTY STATE
+   ============================================================ */
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: var(--space-24) var(--space-8);
+}
+
+.emptyGlow {
+  position: relative;
+  margin-bottom: var(--space-6);
+}
+
+/* Soft warm halo behind the capsule */
+.emptyGlow::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(217, 119, 6, 0.12) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+.emptyHeadline {
+  font-family: var(--font-body);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--stone-700);
+  margin-bottom: var(--space-2);
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .headerTop {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .summaryBar {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+@media (max-width: 480px) {
+  .filterTabs {
+    overflow-x: auto;
+    padding-bottom: 0;
+  }
+
+  .filterTab {
+    white-space: nowrap;
+  }
+
+  .cardFooter {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .cardActions {
+    width: 100%;
+  }
+
+  .cardActions .btn {
+    flex: 1;
+    justify-content: center;
+  }
+}
