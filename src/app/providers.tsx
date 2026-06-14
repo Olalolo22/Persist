@@ -1,51 +1,63 @@
-"use client";
+// src/app/providers.tsx
+// Wraps the entire app with:
+// - QueryClientProvider (react-query, required by dapp-kit)
+// - SuiClientProvider (network config)
+// - WalletProvider (wallet connection state)
+//
+// Drop this into src/app/layout.tsx as <Providers>{children}</Providers>
+//
+// Install:
+//   npm i @mysten/dapp-kit @mysten/sui @mysten/seal @mysten/walrus @tanstack/react-query
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { SuiClientProvider, WalletProvider } from "@mysten/dapp-kit";
-import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
-import "@mysten/dapp-kit/dist/index.css";
+'use client'
 
-import { useEffect, useState } from "react";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import {
+  createNetworkConfig,
+  SuiClientProvider,
+  WalletProvider,
+} from '@mysten/dapp-kit'
 
-const queryClient = new QueryClient();
+// Import dapp-kit base styles — required for ConnectModal rendering
+import '@mysten/dapp-kit/dist/index.css'
 
-const network = (process.env.NEXT_PUBLIC_SUI_NETWORK ?? "testnet") as
-  | "testnet"
-  | "mainnet"
-  | "devnet"
-  | "localnet";
+// ============================================================
+// NETWORK CONFIG
+// Testnet is the primary network for Sui Overflow submission.
+// Mainnet config is included and ready — just swap defaultNetwork.
+// ============================================================
 
-// Force a stable public testnet fullnode to bypass aggressive rate-limiting or Tatum CORS issues.
-const testnetUrl = "https://testnet.sui.rpcpool.com/";
+const { networkConfig } = createNetworkConfig({
+  testnet: {
+    url: 'https://fullnode.testnet.sui.io:443',
+  },
+  mainnet: {
+    url: 'https://fullnode.mainnet.sui.io:443',
+  },
+})
 
-const networks = {
-  testnet: new SuiJsonRpcClient({ url: testnetUrl, network: "testnet" }),
-  mainnet: new SuiJsonRpcClient({
-    url: typeof window !== "undefined" ? "/api/rpc" : (process.env.NEXT_PUBLIC_TATUM_RPC_URL || getJsonRpcFullnodeUrl("mainnet")),
-    network: "mainnet",
-  }),
-  devnet: new SuiJsonRpcClient({
-    url: getJsonRpcFullnodeUrl("devnet"),
-    network: "devnet",
-  }),
-  localnet: new SuiJsonRpcClient({
-    url: getJsonRpcFullnodeUrl("localnet"),
-    network: "localnet",
-  }),
-};
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Reasonable defaults — avoids hammering RPC on every focus
+      staleTime:        30_000,   // 30s
+      refetchOnWindowFocus: false,
+    },
+  },
+})
 
-import { ToastProvider } from "@/components/ui/Toast";
+// ============================================================
+// PROVIDERS
+// ============================================================
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
-      <SuiClientProvider networks={networks} defaultNetwork={network}>
-        <WalletProvider autoConnect={typeof window !== "undefined"}>
-          <ToastProvider>
-            {children}
-          </ToastProvider>
+      <SuiClientProvider networks={networkConfig} defaultNetwork="testnet">
+        <WalletProvider autoConnect>
+          {children}
         </WalletProvider>
       </SuiClientProvider>
     </QueryClientProvider>
-  );
+  )
 }

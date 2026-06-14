@@ -1,14 +1,19 @@
 {
   "name": "persist",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
+  "description": "Temporal Access Control for Sui. The Continuity Protocol — encrypted capsules that unlock only when predefined conditions are met. Humans, agents, and organizations use it to ensure what matters survives.",
   "scripts": {
     "dev": "next dev",
     "build": "next build --webpack",
+    "build:static": "next build --webpack && next export -o out",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "agent": "tsx agent/index.ts",
+    "agent:dev": "tsx watch agent/index.ts"
   },
   "dependencies": {
+    "@mysten-incubation/memwal": "^0.0.7",
     "@mysten/dapp-kit": "^1.0.6",
     "@mysten/seal": "^1.1.3",
     "@mysten/sui": "^2.17.0",
@@ -27,6 +32,8 @@
     "eslint-config-next": "16.2.6",
     "postcss": "^8.5.15",
     "tailwindcss": "^4.3.0",
-    "typescript": "^5"
+    "tsx": "^4.22.4",
+    "typescript": "^5",
+    "zod": "^4.4.3"
   }
 }

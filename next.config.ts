@@ -4,6 +4,8 @@ const nextConfig: NextConfig = {
   images: {
     maximumDiskCacheSize: 0,
   },
+  // For Walrus Sites static deployment (phase4), we can use `next build && next export` (or output: 'export' in newer Next).
+  // The /api/walrus proxy is dev-only convenience; in static prod the code falls back or we use direct aggregator URLs.
   async rewrites() {
     return [
       {
@@ -12,6 +14,9 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // Recommended for Walrus Sites:
+  // output: 'export',
+  // trailingSlash: true,
 };
 
 export default nextConfig;
