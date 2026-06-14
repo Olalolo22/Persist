@@ -9,7 +9,7 @@ import {
   useSignAndExecuteTransaction,
   ConnectButton,
 } from "@mysten/dapp-kit";
-import { fetchCapsuleById, decryptCapsule, createSealClient, createSessionKeyForWallet } from "@/lib/seal";
+import { fetchCapsuleById, decryptCapsule, createSealClient, createSessionKeyForWallet, enrichCapsuleWithPublicMeta, CapsuleData } from "@/lib/seal";
 import { fetchFromWalrus } from "@/lib/walrus";
 import { reconstructDigitalFootprint, DigitalLegacyProfile } from "@/lib/tatum";
 import { Transaction } from "@mysten/sui/transactions";
@@ -57,13 +57,14 @@ export default function ClaimCapsuleDetails() {
         setLoading(true);
         setError(null);
 
-        const cap = await fetchCapsuleById(suiClient, id);
+        let cap = await fetchCapsuleById(suiClient, id);
         if (!cap) {
           setError("Capsule not found on the blockchain. Double-check the URL.");
           setLoading(false);
           return;
         }
 
+        cap = await enrichCapsuleWithPublicMeta(cap);
         setCapsule(cap);
 
         try {
@@ -97,10 +98,16 @@ export default function ClaimCapsuleDetails() {
             const blobText = new TextDecoder().decode(blobBuffer);
             const blobJson = JSON.parse(blobText);
 
-            setCapsuleName(blobJson.name || "Sealed Heirloom");
+            setCapsuleName(blobJson.name || "Sealed Capsule");
             setDescription(blobJson.description || "");
             setEpitaph(blobJson.epitaph || "No public epitaph left for this capsule.");
             setEncryptedPayloadB64(blobJson.encryptedPayload || "");
+
+            // If we have enriched kind info on the capsule object
+            if (cap.kind === 'agent') {
+              // The decrypted content will be agent state / delegate, not human message+file
+              console.log('This is an agent continuity capsule');
+            }
           } catch (walrusErr) {
             console.error("Failed to fetch/parse Walrus blob:", walrusErr);
             setError("Failed to fetch capsule contents from Walrus storage.");
@@ -235,7 +242,11 @@ export default function ClaimCapsuleDetails() {
       
       try {
         const payload = JSON.parse(secretText);
-        if (payload.text !== undefined || payload.file !== undefined) {
+        if (payload.type === 'guardian-state' || payload.delegate) {
+          // Agent capsule — the decrypted content is the memory delegate + state for successor
+          setDecryptedMessage('🤖 Agent continuity capsule. Memory delegate and operational state inherited. The successor process can now load this and resume.');
+          // In a full demo the /agent/succession page would use this data to init MemWal
+        } else if (payload.text !== undefined || payload.file !== undefined) {
           setDecryptedMessage(payload.text || "");
           if (payload.file) {
             setDecryptedFile(payload.file);
@@ -291,7 +302,7 @@ export default function ClaimCapsuleDetails() {
     return (
       <main style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         <div className="spinner"></div>
-        <p style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: 'var(--aged)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Retrieving Heirloom Data...</p>
+        <p style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: 'var(--aged)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Retrieving Capsule Data...</p>
       </main>
     );
   }

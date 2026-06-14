@@ -1,0 +1,445 @@
+/* src/app/claim/claim.module.css */
+
+/* ============================================================
+   PAGE SHELL
+   Tonal note: quieter than the rest of the app.
+   This page may be the first thing a grieving person sees.
+   No big animations. Subdued amber. Restrained.
+   ============================================================ */
+
+.page {
+  min-height: 100vh;
+  background: var(--amber-white);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ============================================================
+   NAV
+   ============================================================ */
+
+.navBack {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--stone-500);
+  transition: color 0.2s;
+}
+
+.navBack:hover {
+  color: var(--stone-900);
+}
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+
+.layout {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-12) var(--space-8) var(--space-24);
+  max-width: 680px;
+  margin: 0 auto;
+  width: 100%;
+  gap: var(--space-8);
+}
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+
+.pageHeader {
+  text-align: center;
+  width: 100%;
+}
+
+.pageHeadline {
+  font-family: var(--font-body);
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: var(--stone-900);
+  margin-bottom: var(--space-3);
+  line-height: 1.25;
+}
+
+/* ============================================================
+   CONTENT AREA
+   ============================================================ */
+
+.content {
+  width: 100%;
+}
+
+/* ============================================================
+   LOOKUP METHODS
+   ============================================================ */
+
+.lookupMethods {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: 100%;
+}
+
+.lookupCard {
+  background: white;
+  border: 1px solid rgba(217, 119, 6, 0.12);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+}
+
+.lookupCard:first-child {
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  border-bottom: none;
+}
+
+.lookupCard:last-child {
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+.orDivider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3) 0;
+  background: rgba(254, 243, 199, 0.4);
+  border-left: 1px solid rgba(217, 119, 6, 0.12);
+  border-right: 1px solid rgba(217, 119, 6, 0.12);
+  position: relative;
+}
+
+.orDivider::before,
+.orDivider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 40%;
+  height: 1px;
+  background: rgba(217, 119, 6, 0.12);
+}
+
+.orDivider::before { left: var(--space-6); }
+.orDivider::after  { right: var(--space-6); }
+
+/* ============================================================
+   ID LOOKUP
+   ============================================================ */
+
+.idLookup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.idRow {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.idInput {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--stone-900);
+  background: var(--amber-white);
+  border: 1.5px solid var(--stone-200);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.idInput:focus {
+  border-color: var(--amber);
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.08);
+  background: white;
+}
+
+.idInput::placeholder {
+  color: var(--stone-400);
+}
+
+/* ============================================================
+   WALLET PROMPT
+   ============================================================ */
+
+.walletPrompt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.walletPrompt > div {
+  flex: 1;
+  min-width: 160px;
+}
+
+.walletPrompt .btn {
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   SEARCHING STATE
+   ============================================================ */
+
+.searchingState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-16) 0;
+}
+
+/* ============================================================
+   CAPSULE READY
+   ============================================================ */
+
+.capsuleReadyWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-6) 0;
+  animation: fadeUp 0.4s ease both;
+}
+
+.capsuleReadyVisual {
+  margin-bottom: var(--space-2);
+}
+
+.capsuleReadyHeadline {
+  font-family: var(--font-body);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--stone-900);
+  text-align: center;
+}
+
+.capsuleReadyMeta {
+  width: 100%;
+  background: white;
+  border: 1px solid rgba(217, 119, 6, 0.12);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+}
+
+.openBtn {
+  width: 100%;
+  max-width: 360px;
+  justify-content: center;
+  font-size: 1rem;
+  padding: 0.875rem 2rem;
+}
+
+.openBtn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* ============================================================
+   NOT READY STATE
+   ============================================================ */
+
+.notReadyWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-8) 0;
+  animation: fadeUp 0.4s ease both;
+}
+
+.notReadyHeadline {
+  font-family: var(--font-body);
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--stone-700);
+}
+
+.notReadyMeta {
+  width: 100%;
+  background: white;
+  border: 1px solid var(--stone-200);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+}
+
+/* ============================================================
+   REVEALED CONTENT
+   Deliberately quiet. Subdued amber crack.
+   No emerald burst on this page.
+   ============================================================ */
+
+.revealedWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-6) 0;
+  animation: fadeUp 0.5s ease both;
+}
+
+.revealedVisual {
+  /* No drop shadow here — keep it quiet */
+  margin-bottom: var(--space-2);
+}
+
+/* Message content */
+.messageContent {
+  width: 100%;
+  background: white;
+  border: 1px solid rgba(217, 119, 6, 0.12);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  max-height: 480px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--stone-200) transparent;
+}
+
+.messageText {
+  font-family: var(--font-body);
+  font-size: 0.9375rem;
+  line-height: 1.75;
+  color: var(--stone-800);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}
+
+.revealedActions {
+  display: flex;
+  gap: var(--space-3);
+  width: 100%;
+  justify-content: center;
+}
+
+/* File reveal */
+.fileReveal {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  padding: var(--space-5);
+  background: white;
+  border: 1px solid rgba(110, 231, 183, 0.2);
+  border-radius: var(--radius-lg);
+}
+
+.fileIcon {
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
+.fileName {
+  font-weight: 500;
+  color: var(--stone-900);
+  margin-bottom: 2px;
+}
+
+/* Chain data */
+.revealedMeta {
+  width: 100%;
+  background: rgba(254, 243, 199, 0.4);
+  border: 1px solid rgba(217, 119, 6, 0.1);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-5);
+}
+
+/* ============================================================
+   SPINNER (shared)
+   ============================================================ */
+
+.claimSpinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   NETWORK NOTE
+   ============================================================ */
+
+.networkNote {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--stone-400);
+  margin-top: auto;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 600px) {
+  .layout {
+    padding: var(--space-8) var(--space-4) var(--space-16);
+  }
+
+  .idRow {
+    flex-direction: column;
+  }
+
+  .idRow .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .walletPrompt {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .walletPrompt .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .fileReveal {
+    flex-wrap: wrap;
+  }
+
+  .fileReveal .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .revealedActions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ============================================================
+   ADDITIONS
+   ============================================================ */
+
+.decryptError {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  background: rgba(254, 226, 226, 0.6);
+  border: 1px solid rgba(185, 28, 28, 0.2);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
