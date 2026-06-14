@@ -1,186 +1,240 @@
 # Persist
 
-## Some things matter too much to disappear with you.
+## Some things are meant to outlast you.
 
-Persist is a trustless digital inheritance protocol built on Sui.
+**Persist is Temporal Access Control for Sui.**
 
-Place sensitive records, final instructions, credentials, recovery information, personal messages, or file attachments inside a cryptographically sealed capsule. The capsule remains inaccessible until predefined release conditions are met.
+It creates cryptographically sealed capsules — time-locked, condition-gated, encrypted via Seal, stored permanently on Walrus — that unlock only when defined conditions are met. No gatekeeper. No private key holder.
 
-No custodian. No administrator. No trusted third party. Not even Persist can open it early.
+Persist adds one thing to the stack: **when** encrypted data can be accessed.
 
-Built for the Tatum × Walrus Hackathon 2026.
+Everything else (Seal, Walrus, Sui Move, Tatum) is a tool Persist uses.
+
+Built for Sui Overflow 2026 (Walrus + Agentic Web tracks).
+
+---
+
+## The Reveal
+
+Persist doesn't need a pivot. It needs a reveal.
+
+The protocol was always a **Continuity Protocol**.
+
+- Inheritance was always continuity for people.
+- Agent succession is continuity for agents.
+- DAO contingency is continuity for organizations.
+
+The invariant never changed. The framing does.
+
+> **"Persist ensures continuity when humans, agents, or organizations disappear."**
+
+Use this in storytelling. For engineers: **"Temporal Access Control for Sui."** For the demo: the Guardian Agent dies and its successor inherits encrypted memory and resumes without losing context.
 
 ---
 
 ## The Problem
 
+Continuity is universal.
+
 > *"A family inherited their dad's estate. Grant of probate. Death certificate. Everything legal. They found his Ledger in a drawer. Nobody knew the PIN. Nobody knew the recovery phrase. Legally theirs. Practically gone forever."*
 > — r/CryptoCurrency
-
-This is not an edge case. Across every crypto community, the same question surfaces:
 
 > *"I've been stacking sats since 2020, and I'm getting close to 40. Lately I've been thinking about what would happen to my Bitcoin if something were to happen to me. How would my family access it?"*
 > — r/BitcoinBeginners
 
-The answers point to the same solution that has never existed — until now:
+Agents crash and lose all operational context. DAOs lose multisig access with no contingency.
 
-> *"In the future, solutions like Bitcoin Vaults and covenants will allow more complicated smart contracts — dead man's switches, time delays, conditions that must be met. Thus you can mathematically enforce your wishes after you pass away."*
-> — Top comment, r/BitcoinBeginners
+$68B+ in crypto is permanently inaccessible — not stolen, not hacked. Just sealed behind a key nobody else has, or a process that stopped.
 
-And one project came close to naming the vision exactly:
+Persist solves the same primitive for all three:
 
-> *"The wallet gets locked, will reject any future deposit and 'answer' with an epitaph... your last words recorded on-chain that you can configure when you create the wallet."*
-> — r/smartcontracts
+| Entity | What disappears | Persist ensures |
+|---|---|---|
+| **Human** | "I die." | My information survives. |
+| **Agent** | "My process stops." | My memory survives. |
+| **Organization** | "My multisig disappears." | Governance instructions survive. |
 
-Persist builds this. On Sui. Today.
+The protocol never changed. The projections did.
 
 ---
 
 ## The Solution
 
-Persist creates a cryptographically sealed capsule that can only be opened by an intended recipient after predefined release conditions are satisfied.
+Persist is the primitive: **temporal access control**.
 
-- Contents are **encrypted locally in the browser** using Sui Seal — nothing leaves your device unencrypted.
-- The encrypted capsule is **preserved permanently on Walrus** — independent of Persist.
-- Release conditions are **recorded on Sui** — enforced by the chain, not by us.
-- Decryption is **authorized by Seal's distributed key servers** — shares only release when the on-chain check passes.
-- A **legacy context snapshot** reconstructed via Tatum is attached to the capsule and shown to the recipient when it opens.
+You encrypt information, store it permanently, define access conditions, and it reveals itself only when those conditions are satisfied on Sui. No one — not even Persist — can bypass the gate.
 
-No passwords. No recovery phrases. No servers holding secrets. No human intermediary required.
+- **How** data is protected: Sui Seal (threshold encryption, client-side only).
+- **Where** data lives: Walrus (permanent, decentralized blobs).
+- **What** conditions are enforced: Sui Move (time, oracle attestations, future on-chain rules).
+- **Signal** for absence: Tatum (wallet activity data; Guardian Agent in Overflow replaces centralized oracle).
+
+**Persist = the "when".** Seal, Walrus, Sui, and Tatum are the tools it uses. Nothing is a peer system.
+
+No passwords. No recovery phrases. No servers holding secrets. No single party can open a capsule early.
 
 ---
 
 ## How Each Layer Works
 
-| Layer | Role | What it does |
-|---|---|---|
-| **Sui** | Enforcement | Records release conditions permanently. Verifies recipient and timing on-chain. Cannot be altered after sealing. |
-| **Walrus** | Preservation | Stores the encrypted capsule independently of Persist. Survives if this application disappears. |
-| **Seal** | Protection | Distributes decryption authority across key servers. Releases shares only when Sui authorization passes. Not even Persist can decrypt early. |
-| **Tatum** | Memory | Reconstructs the creator's on-chain history at seal time. Attached to the capsule narrative. Does not affect access or decryption. |
+Persist is the **Temporal Access Control Layer**.
 
-**Tatum enriches. Sui enforces. Seal protects. Walrus preserves.**
+```
+           PERSIST
+     Temporal Access Control
+  "When can this data be accessed,
+   by whom, under what conditions?"
+
+          uses     uses     uses
+
+       Seal     Walrus     Sui
+      (how)    (where)   (rules)
+```
+
+| Tool | Persist's Relationship | What it provides |
+|---|---|---|
+| **Sui Move** | Runs on | Rules engine. Conditions (time-lock, oracle-signed absence, future predicates) are enforced on-chain. |
+| **Walrus** | Uses for storage | Permanent home for the encrypted payload. Independent of Persist. |
+| **Seal** | Uses for encryption | Threshold encryption + distributed key custody. Client-side only. Decryption shares released only after Sui `seal_approve` passes. |
+| **Tatum (or Guardian)** | Uses for signal | Wallet activity data for Absence Safeguard UX and oracle input. (Current: centralized attest endpoint. Overflow: Guardian Agent owns the key and submits attestations. Roadmap: fully on-chain heartbeat.) |
+
+**The hierarchy is non-negotiable.** If anything looks like a co-star, the clarity of the primitive is lost.
 
 ---
 
-## Architecture
+## Architecture — One Invariant, Clear Hierarchy
 
-```
-Creator → Encrypt locally with Seal → Preserve on Walrus → Record conditions on Sui → Recipient connects → Seal validates authorization → Contents decrypted in browser
-```
+Persist = **Temporal Access Control**. Everything else is infrastructure it composes.
 
-### Creation
+The three zoom levels for all communication:
 
-1. Creator connects a Sui wallet.
-2. Tatum reconstructs a legacy context snapshot from on-chain history.
-3. Capsule contents (text and optional file attachment) are encrypted locally via Sui Seal — bound to the capsule's object ID.
-4. Encrypted bytes are uploaded to Walrus. The blob ID is stored in the Move contract.
-5. Release conditions (recipient address + release trigger) are recorded on Sui via `create_capsule`.
-6. A shareable claim link containing the capsule object ID is generated.
+1. **Technical (engineers, judges):** "Temporal Access Control for Sui."
+2. **Human (product, storytelling):** "Continuity infrastructure for humans, agents, and organizations."
+3. **Demo (live):** "We kill an autonomous Guardian Agent, and another one inherits its encrypted memory and continues operating without losing context."
 
-### Opening
+### Creation (human or agent)
 
-1. Recipient visits the claim link and connects their wallet.
-2. The app fetches the capsule from Sui and verifies the release condition.
-3. The encrypted payload is retrieved from Walrus.
-4. The frontend generates an ephemeral SessionKey and calls Seal to decrypt.
-5. Seal's key servers dry-run `seal_approve` on Sui. If the caller matches the nominee address and the release condition is satisfied, decryption shares are released.
-6. Contents are decrypted locally in the browser.
+1. Creator (wallet or autonomous process) connects or uses its keypair.
+2. (Optional for humans) Legacy context snapshot via Tatum at seal time.
+3. Contents encrypted locally with Sui Seal (bound to the new capsule object ID).
+4. Encrypted payload uploaded to Walrus.
+5. Conditions + oracle pubkey + inactivity window recorded on Sui via `create_capsule`.
+6. Claim link (object ID) generated. Share it.
+
+### Opening / Claim
+
+1. Nominee (human or successor agent) visits claim link + connects.
+2. On-chain capsule read + conditions checked.
+3. Encrypted payload fetched from Walrus.
+4. Session key + `seal_approve` tx (with optional oracle signature).
+5. Seal releases shares only if Sui authorizes.
+6. Local decrypt. Optional `claim_capsule` to mark on-chain.
+
+For agents: the Guardian monitors creator wallets, attests on inactivity, and snapshots its own state into a Persist capsule (nominee = successor). When the Guardian dies, its capsule unlocks (time fallback for demo speed; absence model in production). Successor claims the delegate and resumes with full memory.
 
 ---
 
 ## Release Conditions
 
 ### Time-Lock
-The capsule becomes claimable after a fixed date. Enforced by `clock.timestamp_ms()` in the Move contract.
+Enforced purely on-chain via `clock.timestamp_ms()`. No oracle required.
 
-### Absence Safeguard (Dead Man's Switch)
-The capsule becomes claimable if the creator's wallet has been inactive past a defined window.
+### Absence Safeguard
+Becomes claimable after the creator (or agent) has been inactive past the defined window.
 
-The Absence Safeguard is implemented as a time-lock with a creator-defined window. Tatum's transaction history data provides the UX context — showing the creator's last active date — but the unlock itself is enforced by the absolute release time recorded on Sui. The oracle attestation model is an active area of development toward a fully trustless inactivity trigger.
-When the nominee requests to claim, the oracle queries Tatum's `suix_queryTransactionBlocks` to verify inactivity. If confirmed, the oracle signs an Ed25519 attestation of the capsule ID. The Move contract verifies this signature via `sui::ed25519::ed25519_verify` and authorizes decryption.
+**Oracle progression (honest):**
+- **Current:** Centralized `/api/attest` (server holds the Ed25519 key).
+- **Overflow (this submission):** Guardian Agent owns the wallet + key, monitors via Tatum/RPC, and supplies the attestations. The web app no longer holds the private key.
+- **Roadmap:** On-chain heartbeat / proof-of-life. Zero off-chain observer.
 
-The original time-lock is always preserved as a hard fallback. Even if the oracle goes permanently offline, the capsule becomes claimable after the absolute release date. No capsule can be permanently bricked.
+The contract always accepts a valid oracle signature **OR** the absolute time. The time fallback is the safety net.
 
-**A note on the oracle model:** The Absence Safeguard monitors the creator's nominated Sui wallet. Creators should treat this wallet as their primary on-chain identity for the duration of the capsule. If a creator migrates to a new wallet without updating their capsule, the oracle may incorrectly register inactivity. A heartbeat mechanism — allowing creators to ping the contract and reset the inactivity clock — is the next architectural layer.
-
----
-
-## Tatum Integration
-
-Tatum serves as Persist's memory layer and powers the Absence Safeguard oracle.
-
-**Legacy context** — when a capsule is sealed, Persist executes two parallel `suix_queryTransactionBlocks` calls via the Tatum RPC Gateway:
-- A descending query (limit 100) — total transaction count and most recent activity timestamp.
-- An ascending query (limit 1) — the creator's first on-chain interaction.
-
-This data is assembled into a Legacy Snapshot displayed to the recipient when the capsule opens.
-
-**Inactivity oracle** — when a nominee attempts to claim via the Absence Safeguard, the `/api/attest` route queries Tatum for the creator's most recent transaction. If the time elapsed exceeds the defined inactivity window, the oracle generates a signed attestation authorizing decryption.
-
-Tatum never controls access permissions, release timing, decryption, or ownership. The separation is intentional.
+**Important assumption:** The safeguard watches the exact wallet nominated at creation time. Wallet migration without capsule update can produce false results. Heartbeat (on-chain ping to reset the clock) is planned.
 
 ---
 
-## Tech Stack
+## Tatum + Guardian Integration
 
-| Layer | Technology |
-|---|---|
-| Smart contract | Sui Move — `PersistCapsule` shared object with `seal_approve` access gate |
-| Cryptography | Sui Seal — threshold encryption, distributed key custody |
-| Storage | Walrus — permanent decentralised blob storage |
-| RPC + Oracle | Tatum Sui RPC Gateway — transaction history and inactivity verification |
-| Frontend | Next.js + TypeScript |
+Tatum (or the Guardian Agent in the Agentic Web demo) supplies two things only:
+
+1. **Legacy context snapshot** (humans): first/last activity + tx count at seal time. Purely narrative. Attached to the capsule, shown on reveal. Never participates in access control.
+2. **Inactivity signal** (for Absence): last activity timestamp used by the attestor (centralized today; Guardian Agent at Overflow) to decide whether to sign.
+
+Neither Tatum nor the Guardian ever sees plaintext, controls decryption, or holds the capsule contents. The separation is absolute.
 
 ---
 
-## Demo Flow
+## Tech Stack (Hierarchical)
 
-### Creator
+**Persist** (the protocol / primitive) is built on:
+
+| Role | Technology | Relationship |
+|---|---|---|
+| Core primitive | Persist (Move + temporal logic) | **IS** Temporal Access Control |
+| Encryption tool | Sui Seal | Persist **uses** |
+| Storage tool | Walrus (blobs + Memory + Sites) | Persist **uses** (3 layers for this submission) |
+| Rules engine | Sui Move | Persist **runs on** |
+| Signal (current / demo) | Tatum RPC + Guardian Agent | Persist **reads** / Guardian **submits attestations** |
+| Frontend (Walrus Sites) | Next.js + TypeScript | Convenience layer. Everything critical lives on Walrus + Sui. |
+
+---
+
+## Demo Flows
+
+### Human (Seal page — unchanged ritual)
 1. Connect wallet.
-2. Review legacy context snapshot reconstructed via Tatum.
-3. Choose content type (Wallet Recovery, Personal Letter, Document, etc.).
-4. Write message and optionally attach a file (PDF, image, or text — up to 5MB).
-5. Set release condition: fixed date or Absence Safeguard.
-6. Choose recipient wallet address.
-7. Seal capsule. Share claim link.
+2. Review legacy context (Tatum).
+3. Choose type + write message / attach file.
+4. Set time-lock or Absence Safeguard + nominee.
+5. Seal (local Seal encrypt → Walrus → Sui conditions).
+6. Share claim link.
 
-### Recipient
-1. Visit claim link and connect wallet.
-2. View creator's legacy context.
-3. Once release condition is met — open capsule.
-4. Message and file attachment decrypted locally in browser.
+### Agent (Guardian succession — the Overflow flagship demo)
+1. Guardian #1 is live: monitoring, attesting for capsules, accumulating state in Walrus Memory.
+2. Guardian snapshots its operational memory + delegate key into a Persist capsule (nominee = successor agent, Absence window).
+3. We kill Guardian #1 (process terminates).
+4. Conditions met (time fallback for demo speed).
+5. Successor (#2) claims the capsule.
+6. #2 loads the inherited Walrus Memory delegate + state. Monitoring resumes. "Continuity restored. Nothing was lost."
+
+The same primitive. Two projections.
 
 ---
 
 ## What Makes Persist Different
 
-Every existing approach breaks under pressure:
+Persist is infrastructure-grade, not app-grade. One primitive (temporal access control) with clean projections:
 
-- **Paper envelopes and multisig setups** require someone to hold secrets in advance. If that person is the problem, the solution fails.
-- **Password-protected archives** mean the password must be shared in advance. If it's known, the lock is meaningless. If it's unknown, the contents are gone.
-- **Centralized dead-man switch services** put a company between the creator and recipient. If the company disappears, so does the capsule.
+- No custodian ever holds the data or the keys.
+- Storage (Walrus) and rules (Sui) survive even if persist.app disappears.
+- The same contract + flows protect a human's letter, an agent's entire operational memory, or a DAO's contingency instructions.
+- Walrus depth for this submission: encrypted payloads on Walrus blobs, agent state on Walrus Memory, frontend itself on Walrus Sites.
 
-Persist separates preservation, authorization, decryption, and historical context across independent infrastructure layers. No single party controls the outcome. Not even Persist.
+Existing approaches either require pre-sharing secrets, trust a company, or only move tokens. Persist moves **any** encrypted payload under cryptographically enforced conditions.
 
 ---
 
 ## Known Limitations
 
-- **Public metadata** — capsule name and description are stored unencrypted on Walrus. Anyone who discovers the blob ID can read this metadata before the capsule unlocks. Only the contents are encrypted.
-- **Release time visibility** — `release_time_ms` is a public field on the Sui object. Anyone can see when a capsule is scheduled to unlock.
-- **Oracle wallet assumption** — the Absence Safeguard monitors a specific nominated wallet. Creators who migrate wallets without updating their capsule may trigger false inactivity readings.
+- **Public metadata** — name/description (and for agent capsules: kind + memory stats) live unencrypted on the Walrus blob. Contents inside the `encryptedPayload` stay sealed.
+- **Release time / conditions visibility** — `release_time_ms`, nominee, and oracle pubkey are public on the Sui object.
+- **Oracle / Guardian assumption** — Absence watches the exact wallet nominated at seal. Migration without update produces incorrect results. The Guardian Agent decentralizes the *signing* but the monitoring target is still the nominated address.
+- **No on-chain heartbeat yet** — planned.
 
 ---
 
-## What's Next
+## What's Next (Post-Overflow Roadmap)
 
-The time-lock and Absence Safeguard primitives are live. The next layers:
+Overflow ships the primitive + Guardian succession demo + Walrus depth (3 layers) + production positioning.
 
-- **Heartbeat mechanism** — creators ping the contract periodically to reset the inactivity clock, providing an on-chain proof of life independent of general wallet activity.
-- **Nominee notification** — when a capsule is sealed, the nominated wallet receives an on-chain signal that a capsule exists for them. The first time someone hears about Persist may be the day they're told a capsule is waiting.
-- **The Epitaph** — a public legacy message preserved on Walrus and recorded on Sui. While capsules are private and intended for a specific recipient, the Epitaph is meant for "everlasting". Write the words you want them to keep forever.
-- **Multiple nominees** — distribute capsule access across more than one recipient.
+Future layers (outside this 9-day scope):
+- Heartbeat mechanism (on-chain proof-of-life pings to reset absence clocks).
+- SuiNS for human-readable nominee names.
+- Multiple nominees.
+- Richer programmable conditions.
+- Epitaph promoted to full public Walrus permanent legacy (bonus if time during Overflow).
+
+The protocol is the product. More use cases are projections of the same invariant.
 
 ---
 
@@ -192,11 +246,23 @@ cd persist
 npm install
 cp .env.example .env.local
 npm run dev
+# In another terminal (for Agentic Web demo):
+npm run agent
 ```
 
 ```env
 NEXT_PUBLIC_TATUM_API_KEY=
-NEXT_PUBLIC_TATUM_RPC_URL=
+NEXT_PUBLIC_TATUM_RPC_URL=https://sui-testnet.gateway.tatum.io/
+NEXT_PUBLIC_SUI_NETWORK=testnet
+NEXT_PUBLIC_PERSIST_PACKAGE_ID=...
+
+# For Guardian Agent (Overflow demo)
+GUARDIAN_PRIVATE_KEY=...          # funded testnet keypair for the agent wallet
+GUARDIAN_ORACLE_PRIVATE_KEY=...   # Ed25519 key the Guardian uses for attestations (app no longer holds this)
+PERSIST_ORACLE_PRIVATE_KEY=...    # legacy / fallback only; prefer Guardian
+```
+
+See `agent/README.md` (when present) and `docs/recovery.md` for manual recovery steps.
 NEXT_PUBLIC_PERSIST_PACKAGE_ID=
 PERSIST_ORACLE_PRIVATE_KEY=
 ```
@@ -209,4 +275,6 @@ AGPL-3.0
 
 ---
 
-*Because some things should survive the people who created them.*
+*Persist is Temporal Access Control for Sui.*
+
+*Some things are meant to outlast you.*

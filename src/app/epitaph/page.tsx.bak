@@ -1,0 +1,320 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { useCurrentAccount, useSuiClient, useSignAndExecuteTransaction, ConnectButton } from "@mysten/dapp-kit";
+import { Transaction } from "@mysten/sui/transactions";
+import { uploadToWalrus } from "@/lib/walrus";
+import { EPITAPH_NOMINEE } from "@/lib/seal";
+import { useToast } from "@/components/ui/Toast";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+
+export default function EpitaphPage() {
+  const currentAccount = useCurrentAccount();
+  const suiClient = useSuiClient() as any;
+  const { mutateAsync: signAndExecuteTransaction } = useSignAndExecuteTransaction();
+  const { toast } = useToast();
+  const searchParams = useSearchParams();
+
+  // Viewer mode: ?blob=xxx or ?id=xxx (capsule)
+  const viewBlobId = searchParams.get("blob");
+  const viewCapsuleId = searchParams.get("id");
+  const [viewedEpitaph, setViewedEpitaph] = useState<any>(null);
+  const [viewLoading, setViewLoading] = useState(!!(viewBlobId || viewCapsuleId));
+
+  const [message, setMessage] = useState("");
+  const [selectedFile, setSelectedFile] = useState<{name: string, type: string, base64: string} | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [created, setCreated] = useState<{capsuleId: string, blobId: string} | null>(null);
+
+  // Load public epitaph for viewing
+  useEffect(() => {
+    if (!viewBlobId && !viewCapsuleId) return;
+
+    const load = async () => {
+      try {
+        let blobId = viewBlobId;
+        if (viewCapsuleId && !blobId) {
+          const cap = await suiClient.getObject({ id: viewCapsuleId, options: { showContent: true } });
+          const fields = (cap.data?.content as any)?.fields;
+          if (fields?.walrus_blob_id) {
+            blobId = Buffer.from(fields.walrus_blob_id).toString("utf8");
+          }
+        }
+        if (!blobId) throw new Error("No blob ID");
+
+        const res = await fetch(`https://aggregator.walrus-testnet.walrus.space/v1/blobs/${blobId}`);
+        if (!res.ok) throw new Error("Failed to fetch from Walrus");
+        const text = await res.text();
+        const data = JSON.parse(text);
+        if (data.kind !== "epitaph") {
+          setViewedEpitaph({ error: "This does not appear to be a public epitaph." });
+        } else {
+          setViewedEpitaph(data);
+        }
+      } catch (e: any) {
+        setViewedEpitaph({ error: e.message || "Failed to load epitaph." });
+      } finally {
+        setViewLoading(false);
+      }
+    };
+    load();
+  }, [viewBlobId, viewCapsuleId, suiClient]);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast("File too large (max 5MB for now).", "error");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(",")[1];
+      setSelectedFile({ name: file.name, type: file.type, base64 });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCreate = async () => {
+    if (!currentAccount || !message.trim()) {
+      toast("Please connect wallet and write a message.", "error");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const packageId = process.env.NEXT_PUBLIC_PERSIST_PACKAGE_ID!;
+
+      // 1. Create capsule with special public epitaph params (reuses existing contract)
+      const releaseTimeMs = Date.now() + 10_000; // immediate for public
+      const createTx = new Transaction();
+      createTx.moveCall({
+        target: `${packageId}::capsule::create_capsule`,
+        arguments: [
+          createTx.pure.vector("u8", []),
+          createTx.pure.address(EPITAPH_NOMINEE),
+          createTx.pure.u64(releaseTimeMs),
+          createTx.pure.vector("u8", []), // no oracle needed for public epitaph
+          createTx.pure.u64(0),
+          createTx.object("0x6"),
+        ],
+      });
+
+      const createResult = await signAndExecuteTransaction({ transaction: createTx });
+      const txData = (await suiClient.waitForTransaction({
+        digest: createResult.digest,
+        options: { showObjectChanges: true },
+      })) as any;
+
+      const capsuleId = txData.objectChanges?.find(
+        (change: any) => change.type === "created" && change.objectType?.includes("PersistCapsule")
+      )?.objectId;
+
+      if (!capsuleId) throw new Error("Failed to create on-chain record.");
+
+      // 2. Build public epitaph payload (plain, no Seal encryption - meant to be public forever)
+      const publicPayload = {
+        kind: "epitaph",
+        message: message.trim(),
+        file: selectedFile,
+        timestamp: Date.now(),
+        creator: currentAccount.address,
+      };
+
+      const payloadBuffer = Buffer.from(JSON.stringify(publicPayload));
+      const blobId = await uploadToWalrus(payloadBuffer);
+
+      // 3. Update the capsule with the blob ID (reuses existing flow)
+      const updateTx = new Transaction();
+      updateTx.moveCall({
+        target: `${packageId}::capsule::update_blob_id`,
+        arguments: [
+          updateTx.object(capsuleId),
+          updateTx.pure.vector("u8", Array.from(Buffer.from(blobId))),
+        ],
+      });
+
+      await signAndExecuteTransaction({ transaction: updateTx });
+
+      setCreated({ capsuleId, blobId });
+      toast("Epitaph published publicly on Walrus. Recorded on Sui.", "success");
+    } catch (err: any) {
+      console.error(err);
+      toast(err.message || "Failed to publish epitaph.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (created) {
+    return (
+      <div style={{ maxWidth: 600, margin: "0 auto", padding: 40, textAlign: "center" }}>
+        <h1 style={{ fontFamily: "var(--serif)", fontSize: 32, marginBottom: 16 }}>Epitaph Published</h1>
+        <p style={{ color: "var(--aged)", marginBottom: 24 }}>
+          Your words are now permanently on Walrus and recorded on Sui.<br />
+          Anyone can read them with the link.
+        </p>
+
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", padding: 24, borderRadius: 12, marginBottom: 24, textAlign: "left" }}>
+          <div style={{ fontSize: 12, color: "var(--aged)", marginBottom: 8 }}>Shareable link (no wallet needed)</div>
+          <a 
+            href={`/epitaph?blob=${created.blobId}`} 
+            style={{ color: "var(--ivory)", fontFamily: "var(--mono)", fontSize: 14, wordBreak: "break-all" }}
+            target="_blank"
+          >
+            {window.location.origin}/epitaph?blob={created.blobId}
+          </a>
+          <div style={{ marginTop: 12, fontSize: 12, color: "var(--aged)" }}>
+            Or view via capsule: <a href={`/claim/${created.capsuleId}`} target="_blank" style={{ color: "var(--aged)" }}>{created.capsuleId}</a>
+          </div>
+        </div>
+
+        <Link href="/epitaph" style={{ color: "var(--aged)" }}>Create another Epitaph</Link>
+        <div style={{ marginTop: 24 }}>
+          <Link href="/" style={{ color: "var(--aged)" }}>← Back to home</Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Viewer mode UI (public, no wallet required)
+  if (viewBlobId || viewCapsuleId) {
+    if (viewLoading) {
+      return <div style={{ padding: 40, textAlign: "center", color: "var(--aged)" }}>Loading public epitaph from Walrus...</div>;
+    }
+    if (viewedEpitaph?.error) {
+      return (
+        <div style={{ maxWidth: 600, margin: "0 auto", padding: 40, textAlign: "center" }}>
+          <h2 style={{ color: "#D97706" }}>Epitaph Not Found</h2>
+          <p style={{ color: "var(--aged)" }}>{viewedEpitaph.error}</p>
+          <Link href="/epitaph" style={{ color: "var(--aged)" }}>Create or browse epitaphs</Link>
+        </div>
+      );
+    }
+    return (
+      <div style={{ maxWidth: 700, margin: "0 auto", padding: 40 }}>
+        <Link href="/" style={{ color: "var(--aged)", fontSize: 14 }}>← Back to Persist</Link>
+        <h1 style={{ fontFamily: "var(--serif)", fontSize: 32, margin: "24px 0 8px" }}>The Epitaph</h1>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", padding: 32, borderRadius: 12, marginTop: 16 }}>
+          <div style={{ whiteSpace: "pre-wrap", fontSize: 18, lineHeight: 1.6, color: "var(--ivory)" }}>
+            {viewedEpitaph?.message || "No message content."}
+          </div>
+          {viewedEpitaph?.file && (
+            <div style={{ marginTop: 24, paddingTop: 24, borderTop: "1px solid var(--border)" }}>
+              <div style={{ fontSize: 13, color: "var(--aged)", marginBottom: 8 }}>Attachment</div>
+              <a 
+                href={`data:${viewedEpitaph.file.type};base64,${viewedEpitaph.file.base64}`} 
+                download={viewedEpitaph.file.name}
+                style={{ color: "var(--emerald)" }}
+              >
+                {viewedEpitaph.file.name}
+              </a>
+            </div>
+          )}
+        </div>
+        <div style={{ marginTop: 24, fontSize: 12, color: "var(--aged)", textAlign: "center" }}>
+          Permanently stored on Walrus • Public by design • No server required to read
+        </div>
+        <div style={{ marginTop: 32, textAlign: "center" }}>
+          <Link href="/epitaph" style={{ color: "var(--aged)" }}>Create your own Epitaph →</Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Success state for creation
+  if (created) {
+    return (
+      <div style={{ maxWidth: 600, margin: "0 auto", padding: 40, textAlign: "center" }}>
+        <h1 style={{ fontFamily: "var(--serif)", fontSize: 32, marginBottom: 16 }}>Epitaph Published</h1>
+        <p style={{ color: "var(--aged)", marginBottom: 24 }}>
+          Your words are now permanently on Walrus and recorded on Sui.<br />
+          Anyone can read them with the link.
+        </p>
+
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", padding: 24, borderRadius: 12, marginBottom: 24, textAlign: "left" }}>
+          <div style={{ fontSize: 12, color: "var(--aged)", marginBottom: 8 }}>Shareable link (no wallet needed)</div>
+          <a 
+            href={`/epitaph?blob=${created.blobId}`} 
+            style={{ color: "var(--ivory)", fontFamily: "var(--mono)", fontSize: 14, wordBreak: "break-all" }}
+            target="_blank"
+          >
+            {typeof window !== 'undefined' ? window.location.origin : ''}/epitaph?blob={created.blobId}
+          </a>
+          <div style={{ marginTop: 12, fontSize: 12, color: "var(--aged)" }}>
+            Or view via capsule: <a href={`/claim/${created.capsuleId}`} target="_blank" style={{ color: "var(--aged)" }}>{created.capsuleId}</a>
+          </div>
+        </div>
+
+        <Link href="/epitaph" style={{ color: "var(--aged)" }}>Create another Epitaph</Link>
+        <div style={{ marginTop: 24 }}>
+          <Link href="/" style={{ color: "var(--aged)" }}>← Back to home</Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ maxWidth: 600, margin: "0 auto", padding: 40 }}>
+      <Link href="/" style={{ color: "var(--aged)", fontSize: 14 }}>← Back</Link>
+      <h1 style={{ fontFamily: "var(--serif)", fontSize: 32, margin: "16px 0 8px" }}>The Epitaph</h1>
+      <p style={{ color: "var(--aged)", marginBottom: 32 }}>
+        A public legacy message. Preserved forever on Walrus. Recorded on Sui.<br />
+        No conditions. No nominee. Anyone with the link can read it.
+      </p>
+
+      {!currentAccount ? (
+        <div style={{ textAlign: "center", padding: 40, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12 }}>
+          <p style={{ marginBottom: 16 }}>Connect your wallet to publish an epitaph.</p>
+          <ConnectButton />
+        </div>
+      ) : (
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", padding: 32, borderRadius: 12 }}>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder="Write the words you want them to keep forever..."
+            style={{ 
+              width: "100%", minHeight: 200, background: "var(--bg)", color: "var(--ivory)", 
+              border: "1px solid var(--border)", borderRadius: 8, padding: 16, fontSize: 16, resize: "vertical",
+              fontFamily: "var(--sans)"
+            }}
+          />
+
+          <div style={{ marginTop: 24 }}>
+            <label style={{ display: "block", marginBottom: 8, fontSize: 14, color: "var(--aged)" }}>
+              Optional attachment (max 5MB)
+            </label>
+            <input type="file" onChange={handleFileSelect} style={{ color: "var(--aged)" }} />
+            {selectedFile && (
+              <div style={{ marginTop: 8, fontSize: 13, color: "var(--aged)" }}>
+                {selectedFile.name} ({Math.round(selectedFile.base64.length / 1024)} KB)
+              </div>
+            )}
+          </div>
+
+          <button 
+            onClick={handleCreate} 
+            disabled={loading || !message.trim()}
+            style={{ 
+              marginTop: 32, width: "100%", padding: "14px 24px", 
+              background: "var(--ivory)", color: "var(--bg)", border: "none", borderRadius: 8, 
+              fontSize: 16, fontWeight: 500, cursor: loading ? "not-allowed" : "pointer", opacity: loading || !message.trim() ? 0.6 : 1
+            }}
+          >
+            {loading ? "Publishing to Walrus..." : "Publish Epitaph Publicly"}
+          </button>
+
+          <div style={{ marginTop: 16, fontSize: 12, color: "var(--aged)", textAlign: "center" }}>
+            This will create a public record on Sui and store the message permanently on Walrus.
+          </div>
+        </div>
+      )}
+
+      <div style={{ marginTop: 48, textAlign: "center", fontSize: 13, color: "var(--aged)" }}>
+        <Link href="/epitaph" style={{ color: "var(--aged)" }}>Browse public epitaphs</Link> (or use the dashboard tab)
+      </div>
+    </div>
+  );
+}
