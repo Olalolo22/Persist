@@ -307,7 +307,7 @@ export default function CreateCapsule() {
             <div className="light"></div>
           </div>
           <h2 style={{ fontFamily: 'var(--serif)', fontSize: '32px', color: 'var(--gold)', marginBottom: '8px' }}>Safely Sealed & Stored</h2>
-          <p style={{ fontSize: '12px', color: 'var(--aged)', marginBottom: '40px' }}>Your digital heirloom is written to Walrus permanent storage and enforced by an immutable Sui smart contract.</p>
+          <p style={{ fontSize: '12px', color: 'var(--aged)', marginBottom: '40px' }}>Your capsule is preserved on Walrus and enforced by Sui. Temporal access control in action.</p>
 
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', padding: '24px', borderRadius: '12px', textAlign: 'left', marginBottom: '40px' }}>
             <span style={{ fontSize: '10px', color: 'var(--gold)', opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.15em', fontFamily: 'var(--mono)', display: 'block', marginBottom: '8px' }}>Shareable claim link (wallet protected)</span>
