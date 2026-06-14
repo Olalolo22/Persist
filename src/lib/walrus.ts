@@ -61,3 +61,22 @@ export async function fetchFromWalrus(blobId: string, retries = 3, delayMs = 200
   
   throw new Error("Failed to fetch capsule from Walrus.");
 }
+
+/**
+ * Fetches the *public* metadata for a capsule's Walrus blob.
+ * For human capsules this contains name/description/epitaph + base64 encryptedPayload.
+ * For agent capsules (created by Guardian) this will contain kind:"agent-memory", entryCount, lastSync, etc.
+ *
+ * This can be called without any decryption or on-chain permission.
+ */
+export async function fetchPublicMetadata(blobId: string): Promise<any | null> {
+  try {
+    const buffer = await fetchFromWalrus(blobId);
+    const text = new TextDecoder().decode(buffer);
+    return JSON.parse(text);
+  } catch (err) {
+    console.warn(`Failed to fetch public metadata for blob ${blobId}:`, err);
+    return null;
+  }
+}
+

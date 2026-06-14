@@ -2,8 +2,13 @@ import { SealClient, SessionKey } from "@mysten/seal";
 import { SuiJsonRpcClient } from "@mysten/sui/jsonRpc";
 import { Transaction } from "@mysten/sui/transactions";
 import { fromHex } from "@mysten/sui/utils";
+import { fetchPublicMetadata } from './walrus';
 
 const PACKAGE_ID = process.env.NEXT_PUBLIC_PERSIST_PACKAGE_ID!;
+
+// Fixed nominee for public Epitaphs (uses existing capsule system for on-chain record + events
+// without changing the contract; UI treats these as public/everlasting with no gate).
+export const EPITAPH_NOMINEE = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
 // Testnet key servers (Mysten Labs, free, Open mode)
 const KEY_SERVERS = [
@@ -141,6 +146,16 @@ export interface CapsuleData {
   inactivityWindowMs?: number;
   status: number; // 0 = LOCKED, 1 = CLAIMED
   walrusBlobId: string;
+  // v2.1 additions for dual-nature (human vs agent capsules)
+  kind?: 'human' | 'agent' | 'unknown';
+  publicMeta?: {
+    name?: string;
+    description?: string;
+    kind?: string;
+    entryCount?: number;
+    lastSync?: number;
+    [key: string]: any;
+  };
 }
 
 /**
@@ -258,3 +273,31 @@ export async function fetchCapsuleById(
 
   return null;
 }
+
+/**
+ * Enriches a CapsuleData with public Walrus metadata (name, kind, entryCount for agents, etc.).
+ * This is safe to call for any capsule — no decryption needed.
+ * Used by vault/dashboard to classify Human vs Agent capsules and show appropriate previews.
+ */
+export async function enrichCapsuleWithPublicMeta(capsule: CapsuleData): Promise<CapsuleData> {
+  if (!capsule.walrusBlobId) return capsule;
+
+  const meta = await fetchPublicMetadata(capsule.walrusBlobId);
+  if (!meta) return capsule;
+
+  const kind: CapsuleData['kind'] = meta.kind === 'agent-memory' ? 'agent' : (meta.encryptedPayload ? 'human' : 'unknown');
+
+  return {
+    ...capsule,
+    kind,
+    publicMeta: {
+      name: meta.name,
+      description: meta.description,
+      kind: meta.kind,
+      entryCount: meta.entryCount,
+      lastSync: meta.lastSync,
+      ...meta, // keep everything for flexibility
+    },
+  };
+}
+
