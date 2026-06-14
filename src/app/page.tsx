@@ -1,544 +1,583 @@
-"use client";
+// src/app/page.tsx
+// PERSIST V3 — Landing Page
+// App Router, TypeScript, CSS custom properties from globals.css
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useCurrentAccount, useSuiClient, ConnectButton } from "@mysten/dapp-kit";
-import { fetchAllCapsules, CapsuleData } from "@/lib/seal";
-import { reconstructDigitalFootprint, DigitalLegacyProfile } from "@/lib/tatum";
-import Link from "next/link";
-import { useToast } from "@/components/ui/Toast";
-import { Sidebar } from "@/components/ui/Sidebar";
-import { Navbar } from "@/components/ui/Navbar";
+'use client'
 
+import { useState, useEffect, useRef } from 'react'
+import Link from 'next/link'
+import { AmberDroplet, PersistLogo } from '@/components/AmberDroplet'
+import styles from './page.module.css'
 
-export const dynamic = "force-dynamic";
+// ============================================================
+// TYPES
+// ============================================================
 
-export default function VaultDashboard() {
-  const router = useRouter();
-  const currentAccount = useCurrentAccount();
-  const suiClient = useSuiClient() as any;
-  const { toast } = useToast();
+interface LiveStats {
+  capsules: number
+  blobs: number
+  network: string
+}
 
-  const [loading, setLoading] = useState(true);
-  const [createdCapsules, setCreatedCapsules] = useState<CapsuleData[]>([]);
-  const [incomingCapsules, setIncomingCapsules] = useState<CapsuleData[]>([]);
-  const [legacyProfile, setLegacyProfile] = useState<DigitalLegacyProfile | null>(null);
-  const [suiNames, setSuiNames] = useState<Record<string, string>>({});
-  const [activeTab, setActiveTab] = useState("Overview");
-  const [greeting, setGreeting] = useState("Good evening.");
+// ============================================================
+// STATIC DATA
+// ============================================================
+
+const USE_CASES = [
+  {
+    icon: '🧬',
+    track: 'For People',
+    headline: 'Leave instructions that outlast you.',
+    body: 'Encrypt files, keys, and messages. Set a date or an absence window. Your nominee unlocks everything — automatically, trustlessly, on-chain.',
+    cta: 'Seal a Capsule',
+    href: '/seal',
+    state: 'sealed' as const,
+  },
+  {
+    icon: '🤖',
+    track: 'For Agents',
+    headline: 'Ensure memory survives when processes stop.',
+    body: 'Autonomous agents seal their operational state into Persist capsules. When a Guardian Agent disappears, a successor inherits its memory and resumes without losing context.',
+    cta: 'View Guardian Agent',
+    href: '/agent',
+    state: 'approaching' as const,
+  },
+  {
+    icon: '🏛',
+    track: 'For Organizations',
+    headline: 'Protect governance when signers disappear.',
+    body: 'DAOs and multisig treasuries can seal contingency instructions that unlock only when the organization goes inactive — no single point of failure.',
+    cta: 'Roadmap →',
+    href: '/docs#roadmap',
+    state: 'sealed' as const,
+  },
+]
+
+const COMPARISON_ROWS = [
+  {
+    feature: 'Activity monitoring',
+    others: 'Manual monthly check-in',
+    persist: 'Passive wallet monitoring via Tatum',
+  },
+  {
+    feature: 'What transfers',
+    others: 'Tokens only',
+    persist: 'Files, keys, messages, agent memory',
+  },
+  {
+    feature: 'Beneficiary UX',
+    others: 'Contract address + explorer',
+    persist: 'A wallet or .sui name. One button.',
+  },
+  {
+    feature: 'Storage',
+    others: 'On-chain or centralised',
+    persist: 'Walrus — permanent, decentralised',
+  },
+  {
+    feature: 'Agent continuity',
+    others: 'Not supported',
+    persist: 'Guardian Agent + Walrus Memory',
+  },
+  {
+    feature: 'Trust model',
+    others: 'You trust a server or a company',
+    persist: 'Conditions enforced in Move. No gatekeeper.',
+  },
+]
+
+const TICKER_ITEMS = [
+  { type: 'sealed',  addr: '0x7a3f…c91d', time: '4m ago' },
+  { type: 'sealed',  addr: '0x2bd1…4e02', time: '11m ago' },
+  { type: 'cracked', addr: '0x9c4a…01f7', time: '23m ago' },
+  { type: 'sealed',  addr: '0x4fe8…a3c5', time: '31m ago' },
+  { type: 'sealed',  addr: '0x1d22…88ba', time: '47m ago' },
+  { type: 'cracked', addr: '0x6c09…f2e1', time: '1h ago'  },
+  { type: 'sealed',  addr: '0xb301…7d4f', time: '1h ago'  },
+  { type: 'sealed',  addr: '0x5a77…c13e', time: '2h ago'  },
+]
+
+// ============================================================
+// NAV
+// ============================================================
+
+function Nav() {
+  const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) setGreeting("Good morning.");
-    else if (hour < 17) setGreeting("Good afternoon.");
-    else setGreeting("Good evening.");
-  }, []);
-
-  useEffect(() => {
-    if (!currentAccount) {
-      setLoading(false);
-      return;
-    }
-
-    const currentAddress = currentAccount.address;
-
-    async function loadDashboard() {
-      try {
-        setLoading(true);
-        const allCapsules = await fetchAllCapsules(suiClient);
-
-        const created = allCapsules.filter(
-          (c) => c.creator.toLowerCase() === currentAddress.toLowerCase()
-        );
-        setCreatedCapsules(created);
-
-        const incoming = allCapsules.filter(
-          (c) => c.nominee.toLowerCase() === currentAddress.toLowerCase()
-        );
-        setIncomingCapsules(incoming);
-
-        const profile = await reconstructDigitalFootprint(currentAddress);
-        setLegacyProfile(profile);
-
-        const involvedAddresses = Array.from(
-          new Set([
-            currentAddress,
-            ...created.map((c) => c.nominee),
-            ...incoming.map((c) => c.creator),
-          ])
-        );
-
-        const resolvedNames: Record<string, string> = {};
-        await Promise.all(
-          involvedAddresses.map(async (addr) => {
-            try {
-              const res = await suiClient.resolveNameServiceNames({
-                address: addr,
-              });
-              if (res.data && res.data.length > 0) {
-                resolvedNames[addr.toLowerCase()] = res.data[0];
-              }
-            } catch (err) {
-              console.warn(`SuiNS resolution failed for address ${addr}:`, err);
-            }
-          })
-        );
-        setSuiNames(resolvedNames);
-      } catch (err) {
-        console.error("Failed to load dashboard data:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadDashboard();
-  }, [currentAccount, suiClient]);
-
-  const shortenAddress = (addr: string) => {
-    return addr.slice(0, 6) + "..." + addr.slice(-4);
-  };
-
-  const copyClaimUrl = (e: React.MouseEvent, objectId: string) => {
-    e.stopPropagation();
-    const url = `${window.location.origin}/claim/${objectId}`;
-    navigator.clipboard.writeText(url);
-    toast("Claim URL copied to clipboard", "success");
-  };
-
-  const getDisplayName = (address: string) => {
-    return suiNames[address.toLowerCase()] || shortenAddress(address);
-  };
-
-  if (!currentAccount) {
-    return (
-      <>
-        <div className="nav">
-          <div className="nav-logo">persist</div>
-          <ul className="nav-links">
-            <li><a href="#how-it-works">How it works</a></li>
-            <li><a href="#epitaph">The Epitaph</a></li>
-            <li><Link href="/claim">Claim lookup</Link></li>
-          </ul>
-          <ConnectButton />
-        </div>
-
-        <div className="hero">
-          <div className="hero-glow"></div>
-          
-          <div className="hero-graphic">
-            <div className="pulse-ring"></div>
-            <div className="pulse-ring-2"></div>
-            <div className="capsule-obj">
-              <div className="capsule-seam"></div>
-              <div className="capsule-dot"></div>
-            </div>
-          </div>
-
-          <h1 className="h-title">
-            Some things should<br/><em>outlast you.</em>
-          </h1>
-          <p className="h-sub">
-            Persist is a trustless digital legacy vault. Encrypt what matters. Seal it on-chain. It opens only when needed — never by accident.
-          </p>
-          <div className="h-ctas">
-            <Link href="/claim">
-              <button className="btn-sec">Claim a Capsule</button>
-            </Link>
-          </div>
-        </div>
-
-        <div className="section">
-          <div className="problem">
-            <div className="eyebrow">The problem</div>
-            <div className="p-stat">$68B+</div>
-            <p className="p-text">
-              in crypto permanently unreachable — not stolen, not hacked.<br/>
-              Just sealed behind a key nobody else has.
-            </p>
-            <div className="p-quote">
-              <p>"A family inherited their dad's estate. Grant of probate. Death certificate. Everything legal. They found his Ledger in a drawer. Nobody knew the PIN. Nobody knew the recovery phrase. Legally theirs. Practically gone forever."</p>
-              <span>— r/CryptoCurrency</span>
-            </div>
-          </div>
-        </div>
-
-        <div id="how-it-works" className="section">
-          <div className="how">
-            <div className="eyebrow" style={{marginBottom:'32px'}}>How it works</div>
-            <div className="how-grid">
-              <div className="how-card">
-                <div className="hc-num">01</div>
-                <div className="hc-title">Seal</div>
-                <div className="hc-text">Add keys, credentials, or final instructions. Everything is encrypted locally using Sui Seal before it ever leaves your device. Your capsule contents are yours alone.</div>
-              </div>
-              <div className="how-card">
-                <div className="hc-num">02</div>
-                <div className="hc-title">Persist</div>
-                <div className="hc-text">Your capsule is preserved permanently on Walrus — independently of this application. The release conditions are recorded on Sui and cannot be changed after sealing.</div>
-              </div>
-              <div className="how-card">
-                <div className="hc-num">03</div>
-                <div className="hc-title">Pass on</div>
-                <div className="hc-text">Share a single link with your intended recipient. When the time comes, they connect their wallet and receive what you left for them. No intermediaries. No expiry.</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="section" style={{ marginTop: '40px' }}>
-          <div className="eyebrow" style={{marginBottom:'32px'}}>Built on infrastructure that doesn't disappear.</div>
-          <div className="how-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-            <div className="how-card" style={{ padding: '24px' }}>
-              <div style={{ fontSize: '10px', color: 'var(--aged)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px', fontFamily: 'var(--mono)' }}>The Promise</div>
-              <div style={{ fontSize: '18px', color: 'var(--ivory)', marginBottom: '12px', fontFamily: 'var(--serif)' }}>Sui</div>
-              <div style={{ fontSize: '13px', color: 'var(--aged)', lineHeight: '1.6' }}>Release conditions are recorded on-chain and cannot be changed after sealing.</div>
-            </div>
-            <div className="how-card" style={{ padding: '24px' }}>
-              <div style={{ fontSize: '10px', color: 'var(--aged)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px', fontFamily: 'var(--mono)' }}>The Preservation</div>
-              <div style={{ fontSize: '18px', color: 'var(--ivory)', marginBottom: '12px', fontFamily: 'var(--serif)' }}>Walrus</div>
-              <div style={{ fontSize: '13px', color: 'var(--aged)', lineHeight: '1.6' }}>Capsule contents are stored permanently, independently of this application.</div>
-            </div>
-            <div className="how-card" style={{ padding: '24px' }}>
-              <div style={{ fontSize: '10px', color: 'var(--aged)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px', fontFamily: 'var(--mono)' }}>The Key</div>
-              <div style={{ fontSize: '18px', color: 'var(--ivory)', marginBottom: '12px', fontFamily: 'var(--serif)' }}>Seal</div>
-              <div style={{ fontSize: '13px', color: 'var(--aged)', lineHeight: '1.6' }}>The decryption key is held in distributed custody and released only when conditions are met. Not even Persist can open it early.</div>
-            </div>
-            <div className="how-card" style={{ padding: '24px' }}>
-              <div style={{ fontSize: '10px', color: 'var(--aged)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '8px', fontFamily: 'var(--mono)' }}>The Memory</div>
-              <div style={{ fontSize: '18px', color: 'var(--ivory)', marginBottom: '12px', fontFamily: 'var(--serif)' }}>Tatum</div>
-              <div style={{ fontSize: '13px', color: 'var(--aged)', lineHeight: '1.6' }}>Reconstructs the creator's public on-chain footprint at the moment a capsule is sealed — preserving historical context alongside the inheritance itself.</div>
-            </div>
-          </div>
-        </div>
-
-        <div id="epitaph" className="epitaph-sec">
-          <div className="eyebrow" style={{marginBottom:'48px'}}>The Epitaph</div>
-          <div className="epi-obj">
-            <div className="epi-seam"></div>
-          </div>
-          <div className="epi-quote">"Leave more than assets."</div>
-          <div className="epi-text">
-            Persist lets you record a final message — sealed on-chain, delivered only when your capsule unlocks. Not just keys. Not just tokens. Words that matter.
-          </div>
-        </div>
-
-        <div className="section">
-          <div className="compare">
-            <div className="eyebrow" style={{marginBottom:'32px'}}>Why Persist</div>
-            <table className="comp-table">
-              <thead>
-                <tr>
-                  <th>Feature</th>
-                  <th>Most tools</th>
-                  <th>Persist</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="td-label">On-chain activity reconstruction</td>
-                  <td><span className="bad-badge">Manual monthly check-in</span></td>
-                  <td><span className="good-badge">Passive wallet monitoring</span></td>
-                </tr>
-                <tr>
-                  <td className="td-label">What transfers</td>
-                  <td><span className="bad-badge">Tokens only</span></td>
-                  <td><span className="good-badge">Files, keys, messages</span></td>
-                </tr>
-                <tr>
-                  <td className="td-label">Beneficiary UX</td>
-                  <td><span className="bad-badge">Contract address + explorer</span></td>
-                  <td><span className="good-badge">A simple link. One button.</span></td>
-                </tr>
-                <tr>
-                  <td className="td-label">Storage</td>
-                  <td><span className="bad-badge">On-chain or centralised</span></td>
-                  <td><span className="good-badge">Walrus — permanent, decentralised</span></td>
-                </tr>
-                <tr>
-                  <td className="td-label">Final message</td>
-                  <td><span className="bad-badge">Not supported</span></td>
-                  <td><span className="good-badge">The Epitaph — sealed on-chain</span></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="close-sec">
-          <div className="cs-title">Set it once. It lasts.</div>
-          <div className="cs-text">Five minutes. Then forget about it. Persist does the rest.</div>
-          <ConnectButton />
-          <div className="cs-tech">Built on Sui · Powered by Walrus + Tatum · AGPL-3.0</div>
-        </div>
-
-        <div className="footer">
-          <div className="f-logo">persist</div>
-          <div className="f-note">persist.app/claim — for nominees</div>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '24px', marginTop: '24px', fontFamily: 'var(--mono)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            <a href="https://github.com/Olalolo22/Persist" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--aged)', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.color = 'var(--ivory)'} onMouseOut={(e) => e.currentTarget.style.color = 'var(--aged)'}>GitHub</a>
-            <a href="https://x.com/persist_xyz?s=21" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--aged)', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.color = 'var(--ivory)'} onMouseOut={(e) => e.currentTarget.style.color = 'var(--aged)'}>X (Twitter)</a>
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  if (loading) {
-    return (
-      <main style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <div className="spinner"></div>
-        <p style={{ fontFamily: 'var(--mono)', fontSize: '10px', color: 'var(--aged)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Retrieving Vault Data...</p>
-      </main>
-    );
-  }
+    const onScroll = () => setScrolled(window.scrollY > 12)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   return (
-    <div className="app">
-      <div className="sidebar">
-        <div className="sidebar-logo">persist</div>
-        
-        <div className="nav-menu">
-          <div className={`nav-item ${activeTab === 'Overview' ? 'active' : ''}`} onClick={() => setActiveTab('Overview')}>
-            <div className="nav-dot"></div>
-            Overview
-          </div>
-          <div className={`nav-item ${activeTab === 'My Capsules' ? 'active' : ''}`} onClick={() => setActiveTab('My Capsules')}>
-            <div className="nav-dot"></div>
-            My Capsules
-          </div>
-          <div className={`nav-item ${activeTab === 'Capsules Waiting For You' ? 'active' : ''}`} onClick={() => setActiveTab('Capsules Waiting For You')} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div className="nav-dot"></div>
-              Capsules Waiting For You
-            </div>
-            {incomingCapsules.length > 0 && (
-              <div style={{ background: '#ff6b6b', color: '#100f0d', fontSize: '10px', padding: '2px 6px', borderRadius: '12px', fontWeight: 'bold', fontFamily: 'var(--mono)' }}>
-                {incomingCapsules.length}
-              </div>
-            )}
-          </div>
-          <div className={`nav-item ${activeTab === 'The Epitaph' ? 'active' : ''}`} onClick={() => setActiveTab('The Epitaph')}>
-            <div className="nav-dot"></div>
-            The Epitaph
-          </div>
-        </div>
-        
-        <div className="sb-footer">
-          <div className="sb-label">Connected wallet</div>
-          <div className="sb-wallet" style={{marginBottom:'16px'}}>{getDisplayName(currentAccount.address)}</div>
-          <ConnectButton />
-        </div>
+    <nav className={`nav ${scrolled ? 'nav--scrolled' : ''}`}>
+      <Link href="/" className="nav__logo">
+        <PersistLogo size={22} />
+      </Link>
+
+      <ul className="nav__links">
+        <li><Link href="/#protocol" className="nav__link">Protocol</Link></li>
+        <li><Link href="/seal"      className="nav__link">Seal</Link></li>
+        <li><Link href="/vault"     className="nav__link">Vault</Link></li>
+        <li><Link href="/agent"     className="nav__link">Agent</Link></li>
+        <li><Link href="/docs"      className="nav__link">Docs</Link></li>
+      </ul>
+
+      <div className={styles.navRight}>
+        <span className={styles.networkBadge}>
+          <span className="status-dot status-dot--active" />
+          Testnet
+        </span>
+        <button className="btn btn--primary">Connect Wallet</button>
       </div>
+    </nav>
+  )
+}
 
-      <div className="main-content">
-        <div className="header">
-          <div>
-            <div className="greeting">{greeting}</div>
-            <div className="sub-greeting">Your capsules are sealed. Everything is in order.</div>
+// ============================================================
+// HERO
+// ============================================================
+
+function Hero({ stats }: { stats: LiveStats | null }) {
+  const [capsuleHovered, setCapsuleHovered] = useState(false)
+
+  return (
+    <section className={styles.hero}>
+      <div className={`container ${styles.heroInner}`}>
+
+        {/* Left: copy */}
+        <div className={styles.heroCopy}>
+          <p className="text-section-label animate-fade-up" style={{ marginBottom: '1.25rem' }}>
+            The Continuity Layer for the Agentic Web
+          </p>
+
+          <h1 className={`text-display animate-fade-up animate-fade-up--delay-1 ${styles.heroHeadline}`}>
+            Some things are meant to outlast you.
+          </h1>
+
+          <p className={`text-hero-sub animate-fade-up animate-fade-up--delay-2 ${styles.heroSub}`}>
+            Temporal Access Control for Sui. Seal encrypted data, set conditions,
+            walk away. Persist ensures it survives — for people, agents, and organizations.
+          </p>
+
+          <div className={`${styles.heroCtas} animate-fade-up animate-fade-up--delay-3`}>
+            <Link href="/seal" className="btn btn--primary">
+              Seal a Capsule
+            </Link>
+            <Link href="/#protocol" className="btn btn--secondary">
+              How It Works →
+            </Link>
           </div>
-          <Link href="/create">
-            <button className="btn-new">+ New Capsule</button>
-          </Link>
+
+          {/* Live stats */}
+          {stats && (
+            <div className={`${styles.heroStats} animate-fade-up animate-fade-up--delay-3`}>
+              <div className={styles.heroStat}>
+                <span className="text-mono-label">Capsules Sealed</span>
+                <span className={styles.heroStatValue}>{stats.capsules.toLocaleString()}</span>
+              </div>
+              <div className={styles.heroStatDivider} />
+              <div className={styles.heroStat}>
+                <span className="text-mono-label">Walrus Blobs</span>
+                <span className={styles.heroStatValue}>{stats.blobs.toLocaleString()}</span>
+              </div>
+              <div className={styles.heroStatDivider} />
+              <div className={styles.heroStat}>
+                <span className="text-mono-label">Avg Cost</span>
+                <span className={styles.heroStatValue}>~$0.01 + storage</span>
+              </div>
+            </div>
+          )}
         </div>
 
-        {activeTab === 'Overview' && (
-          <>
-            <div className="stat-card">
-              <div className="sc-left">
-                <div className="sc-badge">
-                  <div className="sc-dot"></div>
-                  <div className="sc-status">On-chain status: secured</div>
-                </div>
-                
-                <div className="sc-title">Your legacy is cryptographically secured.</div>
-                <div className="sc-desc">
-                  Your capsules are sealed and enforced by smart contract. Their state is determined solely by on-chain conditions — nothing else can trigger or alter them.
-                </div>
-
-                <div className="sc-grid">
-                  <div>
-                    <div className="sc-stat-label">Release mechanism</div>
-                    <div className="sc-stat-val">sealed</div>
-                  </div>
-                  <div>
-                    <div className="sc-stat-label">Capsules</div>
-                    <div className="sc-stat-val">{createdCapsules.length} sealed</div>
-                  </div>
-                  <div>
-                    <div className="sc-stat-label">Network</div>
-                    <div className="sc-stat-val">{process.env.NEXT_PUBLIC_SUI_NETWORK === "mainnet" ? "Sui Mainnet" : "Sui Testnet"}</div>
-                  </div>
-                </div>
-
-                <div className="sc-note">
-                  <span>⊕</span>
-                  <p>Access is determined solely by Sui smart contract state. Contextual data does not affect security or unlock conditions.</p>
-                </div>
-              </div>
-
-              <div className="sc-right">
-                <div className="sc-capsule">
-                  <div className="sc-ring-1"></div>
-                  <div className="sc-ring-2"></div>
-                  <div className="sc-ring-3"></div>
-                  <div className="sc-body">
-                    <div className="sc-seam"></div>
-                    <div className="sc-center"></div>
-                  </div>
-                </div>
-                <div className="sc-state-label">status: secured</div>
-              </div>
+        {/* Right: interactive amber capsule */}
+        <div
+          className={styles.heroVisual}
+          onMouseEnter={() => setCapsuleHovered(true)}
+          onMouseLeave={() => setCapsuleHovered(false)}
+        >
+          <div className={styles.heroCapsuleWrap}>
+            <AmberDroplet
+              size="hero"
+              state={capsuleHovered ? 'approaching' : 'sealed'}
+              showCracks={capsuleHovered}
+              animated
+            />
+            <div className={styles.heroCapsuleLabel}>
+              <span className="text-mono-label">Live capsule</span>
+              <span className="text-mono" style={{ color: 'var(--amber-deep)' }}>
+                0x9c4a…01f7
+              </span>
+              <span className="text-mono-label">Walrus blob</span>
+              <span className="text-mono" style={{ color: 'var(--stone-600)', fontSize: '0.65rem' }}>
+                bafyreib…xq2m
+              </span>
             </div>
+          </div>
+          <p className={styles.heroCapsuleHint}>
+            hover to reveal
+          </p>
+        </div>
 
-            <div className="stat-card" style={{ marginTop: '16px', background: 'rgba(28,26,22,0.5)', border: '1px solid rgba(184,151,74,0.3)', padding: '16px' }}>
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                <div>
-                  <div style={{ fontSize: '13px', color: 'var(--ivory)', marginBottom: '4px', fontFamily: 'var(--serif)' }}>Decentralized Access Only</div>
-                  <p style={{ fontSize: '12px', color: 'var(--aged)', lineHeight: '1.5', margin: 0 }}>Decryption keys are never stored by Persist. Your legacy remains inaccessible to anyone but your intended recipient.</p>
-                </div>
-              </div>
-            </div>
+      </div>
+    </section>
+  )
+}
 
-            <div className="sec-title" style={{ marginTop: '48px' }}>How This Capsule Works</div>
-            <div className="sec-sub">The four infrastructure layers protecting your legacy.</div>
-            <div className="how-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginTop: '16px', gap: '12px' }}>
-              <div className="how-card" style={{ padding: '16px' }}>
-                <div style={{ fontSize: '14px', color: 'var(--ivory)', marginBottom: '8px', fontFamily: 'var(--serif)' }}>Sui</div>
-                <div style={{ fontSize: '12px', color: 'var(--aged)', lineHeight: '1.5' }}>Stores the release conditions and nominee information.</div>
-              </div>
-              <div className="how-card" style={{ padding: '16px' }}>
-                <div style={{ fontSize: '14px', color: 'var(--ivory)', marginBottom: '8px', fontFamily: 'var(--serif)' }}>Walrus</div>
-                <div style={{ fontSize: '12px', color: 'var(--aged)', lineHeight: '1.5' }}>Preserves the encrypted capsule contents permanently.</div>
-              </div>
-              <div className="how-card" style={{ padding: '16px' }}>
-                <div style={{ fontSize: '14px', color: 'var(--ivory)', marginBottom: '8px', fontFamily: 'var(--serif)' }}>Seal</div>
-                <div style={{ fontSize: '12px', color: 'var(--aged)', lineHeight: '1.5' }}>Controls when the decryption key can be reconstructed.</div>
-              </div>
-              <div className="how-card" style={{ padding: '16px' }}>
-                <div style={{ fontSize: '14px', color: 'var(--ivory)', marginBottom: '8px', fontFamily: 'var(--serif)' }}>Tatum</div>
-                <div style={{ fontSize: '12px', color: 'var(--aged)', lineHeight: '1.5' }}>Captures a snapshot of the creator's public on-chain history.</div>
-              </div>
-            </div>
+// ============================================================
+// TICKER
+// ============================================================
 
-            <div className="sec-title" style={{ marginTop: '48px' }}>Your Legacy Profile</div>
-            <div className="sec-sub">On-chain history reconstructed from public blockchain records.</div>
-            <div className="stat-card" style={{ marginTop: '16px', background: 'transparent', border: '1px solid var(--border)' }}>
-              <div className="sc-left" style={{ borderRight: 'none', padding: '24px' }}>
-                {legacyProfile?.reconstructionStatus === 'ERROR' ? (
-                  <div style={{ color: 'var(--aged)', fontSize: '13px' }}>Legacy context temporarily unavailable.</div>
-                ) : legacyProfile?.reconstructionStatus === 'EMPTY' ? (
-                  <div style={{ color: 'var(--aged)', fontSize: '13px' }}>No on-chain history found for this wallet.</div>
-                ) : (
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, color: 'var(--aged)', fontSize: '13px', lineHeight: '2' }}>
-                    <li><strong style={{ color: 'var(--ivory)' }}>Active on-chain since:</strong> {legacyProfile?.firstActiveMs ? new Date(legacyProfile.firstActiveMs).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : "Not available"}</li>
-                    <li><strong style={{ color: 'var(--ivory)' }}>Recent activity detected:</strong> {legacyProfile?.lastActiveMs ? `${Math.round((Date.now() - legacyProfile.lastActiveMs) / (1000 * 60 * 60 * 24))} days ago` : "No"}</li>
-                    <li><strong style={{ color: 'var(--ivory)' }}>Transactions recorded:</strong> {legacyProfile?.transactionCount || 0}{legacyProfile?.hasMore ? '+' : ''}</li>
-                    <li><strong style={{ color: 'var(--ivory)' }}>Context snapshot:</strong> {legacyProfile?.firstActiveMs && legacyProfile?.lastActiveMs && legacyProfile?.transactionCount ? "Available" : "Not available"}</li>
-                  </ul>
-                )}
-                <div style={{ marginTop: '24px', fontSize: '11px', color: 'rgba(140, 133, 120, 0.6)', fontFamily: 'var(--mono)' }}>Powered by Tatum infrastructure</div>
-              </div>
-            </div>
-          </>
-        )}
+function Ticker() {
+  // Double the array so the scroll loop is seamless
+  const items = [...TICKER_ITEMS, ...TICKER_ITEMS]
 
-        {activeTab === 'My Capsules' && (
-          <>
-            <div className="sec-title">My Capsules</div>
-            <div className="sec-sub">Encrypted and securely preserved on Walrus</div>
-            
-            {createdCapsules.length === 0 ? (
-              <div className="empty-state">
-                <div className="es-text">You haven't sealed any legacy capsules yet. Get started by sealing something important.</div>
-                <Link href="/create">
-                  <button className="btn-new">+ Seal Capsule</button>
-                </Link>
-              </div>
-            ) : (
-              <div className="grid-2">
-                {createdCapsules.map((cap) => (
-                  <div key={cap.objectId} className="cap-card">
-                    <div>
-                      <div className="cc-top">
-                        <div className="cc-name">Capsule {shortenAddress(cap.objectId)}</div>
-                        <div className={`cc-status ${cap.status === 1 ? 'ready' : 'sealed'}`}>
-                          {cap.status === 1 ? 'claimed' : 'sealed'}
-                        </div>
-                      </div>
-                      <div className="cc-details">
-                        Nominee: <span>{getDisplayName(cap.nominee)}</span><br/>
-                        Release: <span>{new Date(cap.releaseTimeMs).toLocaleDateString()}</span><br/>
-                        {cap.walrusBlobId && (
-                          <>
-                            Walrus: <a href={`https://aggregator.walrus-testnet.walrus.space/v1/${cap.walrusBlobId}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} className="cc-link">
-                              {cap.walrusBlobId.slice(0, 8)}...{cap.walrusBlobId.slice(-8)}
-                            </a>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="cc-bot">
-                      <div className="cc-actions">
-                        <button className="btn-sm" onClick={(e) => copyClaimUrl(e, cap.objectId)}>Copy URL</button>
-                        <button className="btn-sm filled" onClick={(e) => { e.stopPropagation(); router.push(`/claim/${cap.objectId}`); }}>View Status</button>
-                      </div>
-                      <div className="cc-lock">
-                        <div className="cc-lock-dot"></div>
-                        <div className="cc-lock-text">status: sealed</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-
-        {activeTab === 'Capsules Waiting For You' && (
-          <>
-            <div className="sec-title">Capsules Waiting For You</div>
-            <div className="sec-sub">State enforced by Sui smart contract</div>
-            
-            {incomingCapsules.length > 0 ? (
-              <div className="grid-2">
-                {incomingCapsules.map((cap) => {
-                  const isReady = Date.now() >= cap.releaseTimeMs;
-                  const isClaimed = cap.status === 1;
-                  return (
-                    <div key={cap.objectId} className="cap-card" onClick={() => router.push(`/claim/${cap.objectId}`)}>
-                      <div className="cc-top">
-                        <div className="cc-name">Capsule {shortenAddress(cap.objectId)}</div>
-                        <div className={`cc-status ${isClaimed ? 'ready' : isReady ? 'ready' : 'sealed'}`}>
-                          {isClaimed ? 'CLAIMED' : isReady ? 'READY TO CLAIM' : 'LOCKED'}
-                        </div>
-                      </div>
-                      <div className="cc-details">
-                        From: <span>{getDisplayName(cap.creator)}</span><br/>
-                        Release: <span>{new Date(cap.releaseTimeMs).toLocaleDateString()}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="empty-state">
-                <div className="es-text">You have no incoming capsule claims nominated to your address.</div>
-              </div>
-            )}
-          </>
-        )}
-
-        {activeTab === 'The Epitaph' && (
-          <>
-            <div className="sec-title">The Epitaph</div>
-            <div className="sec-sub">Coming soon.</div>
-            <div className="empty-state">
-              <div className="es-text">Write the words you want them to keep forever.</div>
-            </div>
-          </>
-        )}
+  return (
+    <div className="ticker">
+      <div className="ticker__track">
+        {items.map((item, i) => (
+          <div
+            key={i}
+            className={`ticker__item ticker__item--${item.type}`}
+          >
+            <span>
+              {item.type === 'sealed' ? 'SEALED' : 'CRACKED'}
+            </span>
+            <span className="text-mono">{item.addr}</span>
+            <span style={{ color: 'var(--stone-400)' }}>·</span>
+            <span>{item.time}</span>
+            <span style={{ color: 'var(--stone-300)', margin: '0 1rem' }}>|</span>
+          </div>
+        ))}
       </div>
     </div>
-  );
+  )
+}
+
+// ============================================================
+// USE CASE CARDS
+// ============================================================
+
+function UseCaseCards() {
+  return (
+    <section className={`section ${styles.useCases}`} id="use-cases">
+      <div className="container">
+        <div className={styles.sectionHeader}>
+          <p className="text-section-label">What Persist enables</p>
+          <h2 className="text-display-sm">
+            One protocol. Three continuity problems solved.
+          </h2>
+        </div>
+
+        <div className={styles.useCaseGrid}>
+          {USE_CASES.map((uc) => (
+            <div key={uc.track} className={`card card--amber ${styles.useCaseCard}`}>
+              <div className={styles.useCaseTop}>
+                <span className={styles.useCaseIcon}>{uc.icon}</span>
+                <AmberDroplet size="sm" state={uc.state} animated />
+              </div>
+              <p className="text-section-label" style={{ marginBottom: '0.5rem' }}>
+                {uc.track}
+              </p>
+              <h3 className={styles.useCaseHeadline}>{uc.headline}</h3>
+              <p className="text-body" style={{ marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+                {uc.body}
+              </p>
+              <Link href={uc.href} className="btn btn--secondary" style={{ fontSize: '0.875rem' }}>
+                {uc.cta}
+              </Link>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ============================================================
+// PROTOCOL SECTION
+// ============================================================
+
+function ProtocolSection() {
+  return (
+    <section className={`section ${styles.protocol}`} id="protocol">
+      <div className="container container--narrow">
+        <p className="text-section-label" style={{ marginBottom: '1rem' }}>
+          The Primitive
+        </p>
+        <h2 className="text-display-sm" style={{ marginBottom: '1.5rem' }}>
+          Temporal Access Control for Sui.
+        </h2>
+        <p className="text-body" style={{ marginBottom: '3rem', maxWidth: '560px' }}>
+          Persist does one thing: encrypted data that cannot be accessed until defined
+          conditions are met. No gatekeeper. No private key holder. Conditions are
+          enforced in Move. The chain decides when the amber cracks.
+        </p>
+
+        {/* Three-step visual */}
+        <div className={styles.threeStep}>
+          {[
+            {
+              step: '01',
+              label: 'Seal',
+              desc: 'Content encrypted client-side via Sui Seal. AES key wrapped. Payload stored permanently on Walrus.',
+              state: 'sealed' as const,
+            },
+            {
+              step: '02',
+              label: 'Persist',
+              desc: 'The Move contract holds the conditions. Time-lock or absence safeguard. Immutable. No override.',
+              state: 'approaching' as const,
+            },
+            {
+              step: '03',
+              label: 'Reveal',
+              desc: 'Conditions met on-chain. Nominee decrypts locally. The amber cracks. Nothing is lost.',
+              state: 'revealed' as const,
+            },
+          ].map((s, i) => (
+            <div key={s.step} className={styles.stepItem}>
+              <div className={styles.stepVisual}>
+                <AmberDroplet size="md" state={s.state} animated />
+                {i < 2 && <div className={styles.stepConnector} />}
+              </div>
+              <span className="text-mono-label">{s.step} — {s.label}</span>
+              <p className="text-sm" style={{ marginTop: '0.5rem', lineHeight: 1.55 }}>
+                {s.desc}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ============================================================
+// ARCHITECTURE SECTION (oracle trust — honest)
+// ============================================================
+
+function ArchitectureSection() {
+  return (
+    <section className={`section ${styles.architecture}`} id="architecture">
+      <div className="container">
+        <div className={styles.sectionHeader}>
+          <p className="text-section-label">Architecture</p>
+          <h2 className="text-display-sm">
+            One primitive. Three tools.
+          </h2>
+        </div>
+
+        {/* Hierarchy diagram */}
+        <div className={styles.archDiagram}>
+          <div className={styles.archCore}>
+            <span className="text-mono-label">Core Primitive</span>
+            <div className={styles.archCoreBox}>
+              <AmberDroplet size="sm" state="sealed" animated />
+              <div>
+                <div style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.25rem' }}>
+                  PERSIST
+                </div>
+                <div className="text-sm">Temporal Access Control Layer</div>
+              </div>
+            </div>
+          </div>
+
+          <div className={styles.archTools}>
+            {[
+              { name: 'Seal',       role: 'Encryption',   desc: 'How data is protected' },
+              { name: 'Walrus',     role: 'Storage',      desc: 'Where data lives' },
+              { name: 'Sui Move',   role: 'Rules Engine', desc: 'What conditions are enforced' },
+            ].map((tool) => (
+              <div key={tool.name} className={`card ${styles.archToolCard}`}>
+                <span className="text-mono-label">{tool.role}</span>
+                <div style={{ fontWeight: 600, margin: '0.25rem 0' }}>{tool.name}</div>
+                <div className="text-sm">{tool.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Oracle trust — honest three-state */}
+        <div className={`card card--amber ${styles.oracleState}`}>
+          <p className="text-section-label" style={{ marginBottom: '1rem' }}>
+            Oracle Trust — Transparent Roadmap
+          </p>
+          <div className={styles.oracleSteps}>
+            {[
+              {
+                status: 'Live',
+                color: 'var(--amber)',
+                title: 'Centralized oracle',
+                desc: '/api/attest — server-held Ed25519 key. Transparent, documented, functional.',
+              },
+              {
+                status: 'In Progress',
+                color: 'var(--amber-glow)',
+                title: 'Guardian Agent',
+                desc: 'Autonomous agent with its own Sui wallet replaces the server key. Attestations submitted on-chain.',
+              },
+              {
+                status: 'Roadmap',
+                color: 'var(--emerald-deep)',
+                title: 'On-chain heartbeat',
+                desc: 'Fully trustless — Sui epoch timestamps verify inactivity natively. No off-chain process.',
+              },
+            ].map((step) => (
+              <div key={step.status} className={styles.oracleStep}>
+                <span
+                  className="badge"
+                  style={{
+                    background: `${step.color}18`,
+                    color: step.color,
+                    border: `1px solid ${step.color}40`,
+                    marginBottom: '0.5rem',
+                  }}
+                >
+                  {step.status}
+                </span>
+                <div style={{ fontWeight: 500, marginBottom: '0.25rem' }}>{step.title}</div>
+                <p className="text-sm">{step.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ============================================================
+// COMPARISON TABLE
+// ============================================================
+
+function ComparisonTable() {
+  return (
+    <section className={`section ${styles.comparison}`}>
+      <div className="container">
+        <div className={styles.sectionHeader}>
+          <p className="text-section-label">Why Persist</p>
+          <h2 className="text-display-sm">Built differently.</h2>
+        </div>
+
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th className={styles.tableFeature}>Feature</th>
+                <th className={styles.tableOthers}>Most tools</th>
+                <th className={styles.tablePersist}>
+                  <AmberDroplet size="xs" state="sealed" animated={false} />
+                  Persist
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {COMPARISON_ROWS.map((row) => (
+                <tr key={row.feature} className={styles.tableRow}>
+                  <td className={styles.tableFeature}>{row.feature}</td>
+                  <td className={styles.tableOthers}>
+                    <span className={styles.crossMark}>✕</span> {row.others}
+                  </td>
+                  <td className={styles.tablePersist}>
+                    <span className={styles.checkMark}>✓</span> {row.persist}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ============================================================
+// FINAL CTA
+// ============================================================
+
+function FinalCTA() {
+  return (
+    <section className={`section ${styles.finalCta}`}>
+      <div className="container container--narrow" style={{ textAlign: 'center' }}>
+        <div style={{ margin: '0 auto 2rem' }}>
+          <AmberDroplet size="lg" state="approaching" animated />
+        </div>
+        <h2 className="text-display-sm" style={{ marginBottom: '1rem' }}>
+          What's worth preserving?
+        </h2>
+        <p className="text-body" style={{ marginBottom: '2rem', color: 'var(--stone-600)' }}>
+          Seal your first capsule in under two minutes. No signup. No central server.
+          Just your wallet, a condition, and the chain.
+        </p>
+        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <Link href="/seal" className="btn btn--primary" style={{ fontSize: '1rem', padding: '0.875rem 2rem' }}>
+            Seal a Capsule
+          </Link>
+          <Link href="/agent" className="btn btn--secondary">
+            View Guardian Agent
+          </Link>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ============================================================
+// FOOTER
+// ============================================================
+
+function Footer() {
+  return (
+    <footer className={styles.footer}>
+      <div className={`container ${styles.footerInner}`}>
+        <PersistLogo size={18} />
+        <div className={styles.footerLinks}>
+          <a href="https://github.com/Olalolo22/Persist" className={styles.footerLink} target="_blank" rel="noreferrer">
+            GitHub
+          </a>
+          <a href="/docs" className={styles.footerLink}>Docs</a>
+          <a href="/docs#roadmap" className={styles.footerLink}>Roadmap</a>
+        </div>
+        <div className={styles.footerPowered}>
+          <span className="text-mono-label">Built with</span>
+          {['Walrus', 'Sui Seal', 'Tatum'].map((tech) => (
+            <span key={tech} className={styles.techPill}>{tech}</span>
+          ))}
+        </div>
+      </div>
+    </footer>
+  )
+}
+
+// ============================================================
+// PAGE
+// ============================================================
+
+export default function HomePage() {
+  const [stats, setStats] = useState<LiveStats | null>(null)
+
+  // In production: fetch from your own API route that queries Sui
+  // For now: seed with placeholder that looks real
+  useEffect(() => {
+    setStats({ capsules: 47, blobs: 47, network: 'Testnet' })
+  }, [])
+
+  return (
+    <>
+      <Nav />
+      <main>
+        <Hero stats={stats} />
+        <Ticker />
+        <UseCaseCards />
+        <div className="divider--crack" style={{ margin: '0 auto', maxWidth: '900px' }} />
+        <ProtocolSection />
+        <ArchitectureSection />
+        <ComparisonTable />
+        <FinalCTA />
+      </main>
+      <Footer />
+    </>
+  )
 }

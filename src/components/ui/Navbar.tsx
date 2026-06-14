@@ -13,12 +13,12 @@ export function Navbar({ address, showBack = false, backUrl = "/dashboard", back
       alignItems: 'center'
     }}>
       <span style={{
-        fontFamily: 'var(--serif)',
+        fontFamily: 'var(--serif-hero, var(--serif))',
         fontSize: '18px',
         fontWeight: 300,
         color: 'var(--aged)',
         letterSpacing: '0.04em'
-      }}>persist</span>
+      }}>PERSIST</span>
       
       <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
         {address ? (
